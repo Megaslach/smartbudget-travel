@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: smartbudget-api
+    runtime: node
+    region: frankfurt
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: PORT
+        value: "4000"
+      - key: NODE_ENV
+        value: production

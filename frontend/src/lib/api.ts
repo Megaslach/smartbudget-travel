@@ -1,0 +1,83 @@
+import { AuthResponse, SimulationResponse, TripResponse, Simulation } from '@/types';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+class ApiClient {
+  private token: string | null = null;
+
+  setToken(token: string | null) {
+    this.token = token;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw { status: response.status, ...data };
+    }
+
+    return data as T;
+  }
+
+  // Auth
+  async register(email: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async login(email: string, password: string): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async getMe(): Promise<{ user: AuthResponse['user'] }> {
+    return this.request('/auth/me');
+  }
+
+  // Simulations
+  async simulate(destination: string, duration: number, people: number): Promise<SimulationResponse> {
+    return this.request<SimulationResponse>('/simulate', {
+      method: 'POST',
+      body: JSON.stringify({ destination, duration, people }),
+    });
+  }
+
+  async getUserSimulations(): Promise<{ simulations: Simulation[] }> {
+    return this.request('/user/simulations');
+  }
+
+  // Trip generation (premium)
+  async generateTrip(simulationId: string): Promise<TripResponse> {
+    return this.request<TripResponse>('/generate-trip', {
+      method: 'POST',
+      body: JSON.stringify({ simulationId }),
+    });
+  }
+
+  // Stripe
+  async createCheckoutSession(): Promise<{ url: string }> {
+    return this.request('/create-checkout-session', {
+      method: 'POST',
+    });
+  }
+}
+
+export const api = new ApiClient();
