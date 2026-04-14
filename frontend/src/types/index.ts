@@ -10,6 +10,11 @@ export interface FlightOption {
   price: number;
   type: string;
   bookingUrl: string;
+  departureAt?: string;
+  arrivalAt?: string;
+  duration?: string;
+  stops?: number;
+  isRealData?: boolean;
 }
 
 export interface HotelOption {
@@ -18,6 +23,9 @@ export interface HotelOption {
   pricePerNight: number;
   rating: number;
   bookingUrl: string;
+  totalPrice?: number;
+  roomType?: string;
+  isRealData?: boolean;
 }
 
 export interface ActivityOption {
@@ -33,6 +41,7 @@ export interface FlightEstimate {
   note: string;
   options: FlightOption[];
   searchUrl: string;
+  isRealData?: boolean;
 }
 
 export interface AccommodationEstimate {
@@ -42,6 +51,7 @@ export interface AccommodationEstimate {
   note: string;
   options: HotelOption[];
   searchUrl: string;
+  isRealData?: boolean;
 }
 
 export interface ActivitiesEstimate {
@@ -49,6 +59,15 @@ export interface ActivitiesEstimate {
   perDayPerPerson: number;
   options: ActivityOption[];
   searchUrl: string;
+}
+
+export interface PremiumFilters {
+  accommodationArea?: string;
+  accommodationType?: 'hotel' | 'airbnb' | 'hostel' | 'luxury';
+  flightClass?: 'economy' | 'premium_economy' | 'business' | 'first';
+  foodBudget?: 'budget' | 'moderate' | 'premium' | 'luxury';
+  interests?: string[];
+  maxBudget?: number;
 }
 
 export interface BudgetEstimate {

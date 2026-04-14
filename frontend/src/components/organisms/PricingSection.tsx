@@ -8,17 +8,22 @@ import PricingCard from '@/components/molecules/PricingCard';
 import toast from 'react-hot-toast';
 
 const FREE_FEATURES = [
-  'Simulation de budget illimitée',
-  'Estimation par catégorie',
+  'Simulation de budget basique',
+  'Suggestions de vols, hôtels & activités',
+  'Liens de réservation Skyscanner, Booking, Airbnb',
   'Historique des simulations',
 ];
 
 const PREMIUM_FEATURES = [
   'Tout le plan gratuit',
+  'Choix du quartier / zone d\'hébergement',
+  'Filtre type de logement (hôtel, Airbnb, auberge, luxe)',
+  'Classe de vol (éco, business, première)',
+  'Style de restauration personnalisé',
+  'Centres d\'intérêt pour activités sur mesure',
+  'Budget maximum avec optimisation IA',
   'Itinéraire IA jour par jour',
-  'Suggestions d\'activités personnalisées',
   'Export PDF de l\'itinéraire',
-  'Dashboard complet',
   'Support prioritaire',
 ];
 

@@ -32,7 +32,7 @@ export default function SimulationPage() {
     return null;
   }
 
-  const handleSimulate = async (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number }) => {
+  const handleSimulate = async (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number; premiumFilters?: import('@/types').PremiumFilters }) => {
     setIsSimulating(true);
     try {
       const response = await api.simulate(data);

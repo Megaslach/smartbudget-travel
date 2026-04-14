@@ -16,6 +16,15 @@ export const simulationSchema = z.object({
   startDate: z.string().min(1, 'Date de départ requise'),
   endDate: z.string().min(1, 'Date de retour requise'),
   people: z.number().int().min(1, 'Minimum 1 personne').max(20, 'Maximum 20 personnes'),
+  // Premium filters (optional)
+  premiumFilters: z.object({
+    accommodationArea: z.string().optional(),
+    accommodationType: z.enum(['hotel', 'airbnb', 'hostel', 'luxury']).optional(),
+    flightClass: z.enum(['economy', 'premium_economy', 'business', 'first']).optional(),
+    foodBudget: z.enum(['budget', 'moderate', 'premium', 'luxury']).optional(),
+    interests: z.array(z.string()).optional(),
+    maxBudget: z.number().optional(),
+  }).optional(),
 });
 
 export const generateTripSchema = z.object({

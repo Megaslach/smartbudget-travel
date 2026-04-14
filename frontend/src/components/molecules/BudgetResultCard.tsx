@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { BudgetEstimate } from '@/types';
 import Card from '@/components/atoms/Card';
-import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star } from 'lucide-react';
+import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface BudgetResultCardProps {
   budget: BudgetEstimate;
@@ -77,23 +77,40 @@ export default function BudgetResultCard({ budget, destination, duration, people
       {budget.flights.options && budget.flights.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Plane className="h-5 w-5 text-sky-500" /> Vols</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Plane className="h-5 w-5 text-sky-500" /> Vols</h4>
+              {budget.flights.isRealData ? (
+                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Prix réels</span>
+              ) : (
+                <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Estimation IA</span>
+              )}
+            </div>
             <a href={budget.flights.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Skyscanner <ExternalLink className="h-3 w-3" /></a>
           </div>
           <div className="grid gap-3">
-            {budget.flights.options.map((f, i) => (
-              <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 p-4 hover:border-sky-200 hover:shadow-md transition-all group">
-                <div className="p-2 rounded-lg bg-sky-50"><Plane className="h-5 w-5 text-sky-500" /></div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 text-sm">{f.airline}</p>
-                  <p className="text-xs text-gray-400">{f.type}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">{f.price}€<span className="text-xs text-gray-400 font-normal">/pers</span></p>
-                  <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
-                </div>
-              </a>
-            ))}
+            {budget.flights.options.map((f, i) => {
+              const depTime = f.departureAt ? new Date(f.departureAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+              const arrTime = f.arrivalAt ? new Date(f.arrivalAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+              return (
+                <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 p-4 hover:border-sky-200 hover:shadow-md transition-all group">
+                  <div className="p-2 rounded-lg bg-sky-50"><Plane className="h-5 w-5 text-sky-500" /></div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900 text-sm">{f.airline}</p>
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <span>{f.type}</span>
+                      {depTime && arrTime && (
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{depTime} → {arrTime}</span>
+                      )}
+                      {f.duration && <span>{f.duration}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900">{f.price.toLocaleString()}€<span className="text-xs text-gray-400 font-normal">/pers</span></p>
+                    <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+                  </div>
+                </a>
+              );
+            })}
           </div>
           <p className="text-xs text-gray-400 mt-2">{budget.flights.note}</p>
         </motion.div>
@@ -103,7 +120,14 @@ export default function BudgetResultCard({ budget, destination, duration, people
       {budget.accommodation.options && budget.accommodation.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Hotel className="h-5 w-5 text-indigo-500" /> Hébergement</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Hotel className="h-5 w-5 text-indigo-500" /> Hébergement</h4>
+              {budget.accommodation.isRealData ? (
+                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Prix réels</span>
+              ) : (
+                <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Estimation IA</span>
+              )}
+            </div>
             <a href={budget.accommodation.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Booking <ExternalLink className="h-3 w-3" /></a>
           </div>
           <div className="grid gap-3">

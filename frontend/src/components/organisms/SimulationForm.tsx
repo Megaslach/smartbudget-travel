@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, PlaneTakeoff, Calendar, Users, Search, Plane } from 'lucide-react';
+import { MapPin, PlaneTakeoff, Calendar, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown } from 'lucide-react';
 import Button from '@/components/atoms/Button';
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { PremiumFilters } from '@/types';
+import { useRouter } from 'next/navigation';
 
 interface Airport { code: string; name: string }
 interface Destination {
@@ -20,7 +23,7 @@ interface Destination {
 interface AirportResult { city: string; country: string; emoji: string; code: string; airportName: string }
 
 interface SimulationFormProps {
-  onSubmit: (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number }) => Promise<void>;
+  onSubmit: (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number; premiumFilters?: PremiumFilters }) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -55,7 +58,24 @@ function useAutocomplete<T>(searchFn: (q: string) => Promise<T[]>, delay = 200) 
   return { query, setQuery, results, show, setShow, ref, search };
 }
 
+const INTERESTS = [
+  { id: 'culture', label: 'Culture & Musées', icon: '🏛️' },
+  { id: 'nature', label: 'Nature & Rando', icon: '🌿' },
+  { id: 'beach', label: 'Plage & Farniente', icon: '🏖️' },
+  { id: 'gastronomy', label: 'Gastronomie', icon: '🍽️' },
+  { id: 'nightlife', label: 'Vie nocturne', icon: '🎉' },
+  { id: 'shopping', label: 'Shopping', icon: '🛍️' },
+  { id: 'sport', label: 'Sport & Aventure', icon: '🧗' },
+  { id: 'wellness', label: 'Bien-être & Spa', icon: '🧖' },
+  { id: 'photography', label: 'Photographie', icon: '📸' },
+  { id: 'history', label: 'Histoire', icon: '📜' },
+];
+
 export default function SimulationForm({ onSubmit, isLoading }: SimulationFormProps) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const isPremium = user?.isPremium ?? false;
+
   const [destination, setDestination] = useState('');
   const [departureCity, setDepartureCity] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -63,6 +83,15 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
   const [people, setPeople] = useState('2');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedDest, setSelectedDest] = useState<Destination | null>(null);
+  const [showPremiumFilters, setShowPremiumFilters] = useState(false);
+
+  // Premium filters
+  const [accommodationArea, setAccommodationArea] = useState('');
+  const [accommodationType, setAccommodationType] = useState<PremiumFilters['accommodationType']>();
+  const [flightClass, setFlightClass] = useState<PremiumFilters['flightClass']>('economy');
+  const [foodBudget, setFoodBudget] = useState<PremiumFilters['foodBudget']>('moderate');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [maxBudget, setMaxBudget] = useState('');
 
   const depAc = useAutocomplete<AirportResult>(
     useCallback(async (q: string) => (await api.searchAirports(q)).airports, []),
@@ -85,10 +114,24 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
     return Object.keys(e).length === 0;
   };
 
+  const toggleInterest = (id: string) => {
+    setInterests(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
-    await onSubmit({ destination: destination.trim(), departureCity: departureCity.trim(), startDate, endDate, people: parseInt(people) });
+
+    const premiumFilters: PremiumFilters | undefined = isPremium && showPremiumFilters ? {
+      ...(accommodationArea ? { accommodationArea } : {}),
+      ...(accommodationType ? { accommodationType } : {}),
+      ...(flightClass && flightClass !== 'economy' ? { flightClass } : {}),
+      ...(foodBudget && foodBudget !== 'moderate' ? { foodBudget } : {}),
+      ...(interests.length > 0 ? { interests } : {}),
+      ...(maxBudget ? { maxBudget: parseInt(maxBudget) } : {}),
+    } : undefined;
+
+    await onSubmit({ destination: destination.trim(), departureCity: departureCity.trim(), startDate, endDate, people: parseInt(people), premiumFilters });
   };
 
   const duration = startDate && endDate ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
@@ -220,6 +263,154 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
             <span className="text-sm font-medium">{duration} nuit{duration > 1 ? 's' : ''}</span>
           </motion.div>
         )}
+      </div>
+
+      {/* Premium Filters Section */}
+      <div className="border-t border-gray-100 pt-4">
+        <button
+          type="button"
+          onClick={() => {
+            if (!isPremium) { router.push('/pricing'); return; }
+            setShowPremiumFilters(!showPremiumFilters);
+          }}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+            isPremium
+              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 hover:border-amber-300'
+              : 'bg-gray-50 border border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {isPremium ? <Crown className="h-5 w-5 text-amber-500" /> : <Lock className="h-5 w-5 text-gray-400" />}
+            <span className={`font-semibold text-sm ${isPremium ? 'text-amber-800' : 'text-gray-500'}`}>
+              Filtres Premium
+            </span>
+            {!isPremium && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">PRO</span>}
+          </div>
+          {isPremium ? (
+            <ChevronDown className={`h-4 w-4 text-amber-500 transition-transform ${showPremiumFilters ? 'rotate-180' : ''}`} />
+          ) : (
+            <span className="text-xs text-gray-400">Passer Premium →</span>
+          )}
+        </button>
+
+        <AnimatePresence>
+          {isPremium && showPremiumFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-4 space-y-5">
+                {/* Quartier hébergement */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <Building2 className="inline h-4 w-4 mr-1 text-amber-500" />Quartier / Zone d&apos;hébergement
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Shibuya, Le Marais, Trastevere..."
+                    value={accommodationArea}
+                    onChange={(e) => setAccommodationArea(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">L&apos;IA cherchera des logements dans ce quartier spécifiquement</p>
+                </div>
+
+                {/* Type hébergement + Classe de vol */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Building2 className="inline h-4 w-4 mr-1 text-amber-500" />Type d&apos;hébergement
+                    </label>
+                    <select
+                      value={accommodationType || ''}
+                      onChange={(e) => setAccommodationType(e.target.value as PremiumFilters['accommodationType'] || undefined)}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="">Tous types</option>
+                      <option value="hostel">Auberge de jeunesse</option>
+                      <option value="airbnb">Airbnb / Appartement</option>
+                      <option value="hotel">Hôtel classique (3-4*)</option>
+                      <option value="luxury">Hôtel de luxe (5*)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Plane className="inline h-4 w-4 mr-1 text-amber-500" />Classe de vol
+                    </label>
+                    <select
+                      value={flightClass || 'economy'}
+                      onChange={(e) => setFlightClass(e.target.value as PremiumFilters['flightClass'])}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="economy">Économique</option>
+                      <option value="premium_economy">Premium Economy</option>
+                      <option value="business">Classe Affaires</option>
+                      <option value="first">Première Classe</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Budget repas + Budget max */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <UtensilsCrossed className="inline h-4 w-4 mr-1 text-amber-500" />Style de restauration
+                    </label>
+                    <select
+                      value={foodBudget || 'moderate'}
+                      onChange={(e) => setFoodBudget(e.target.value as PremiumFilters['foodBudget'])}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="budget">Street food / Budget</option>
+                      <option value="moderate">Mixte restaurant / local</option>
+                      <option value="premium">Bons restaurants</option>
+                      <option value="luxury">Gastronomique / Étoilé</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Wallet className="inline h-4 w-4 mr-1 text-amber-500" />Budget maximum (€)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 3000"
+                      min="0"
+                      value={maxBudget}
+                      onChange={(e) => setMaxBudget(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Centres d'intérêt */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Compass className="inline h-4 w-4 mr-1 text-amber-500" />Centres d&apos;intérêt
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {INTERESTS.map((i) => (
+                      <button
+                        key={i.id}
+                        type="button"
+                        onClick={() => toggleInterest(i.id)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          interests.includes(i.id)
+                            ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:border-amber-400'
+                        }`}
+                      >
+                        {i.icon} {i.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">L&apos;IA proposera des activités en rapport avec vos centres d&apos;intérêt</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <Button type="submit" size="lg" className="w-full" isLoading={isLoading}>

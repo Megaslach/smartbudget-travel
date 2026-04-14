@@ -62,7 +62,7 @@ class ApiClient {
   }
 
   // Simulations
-  async simulate(data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number }): Promise<SimulationResponse> {
+  async simulate(data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number; premiumFilters?: import('@/types').PremiumFilters }): Promise<SimulationResponse> {
     return this.request<SimulationResponse>('/simulate', {
       method: 'POST',
       body: JSON.stringify(data),
