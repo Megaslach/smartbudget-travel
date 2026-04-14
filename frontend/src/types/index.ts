@@ -5,10 +5,34 @@ export interface User {
   createdAt?: string;
 }
 
+export interface FlightOption {
+  airline: string;
+  price: number;
+  type: string;
+  bookingUrl: string;
+}
+
+export interface HotelOption {
+  name: string;
+  type: string;
+  pricePerNight: number;
+  rating: number;
+  bookingUrl: string;
+}
+
+export interface ActivityOption {
+  name: string;
+  price: number;
+  duration: string;
+  bookingUrl: string;
+}
+
 export interface FlightEstimate {
   avgPrice: number;
   source: string;
   note: string;
+  options: FlightOption[];
+  searchUrl: string;
 }
 
 export interface AccommodationEstimate {
@@ -16,6 +40,15 @@ export interface AccommodationEstimate {
   total: number;
   source: string;
   note: string;
+  options: HotelOption[];
+  searchUrl: string;
+}
+
+export interface ActivitiesEstimate {
+  total: number;
+  perDayPerPerson: number;
+  options: ActivityOption[];
+  searchUrl: string;
 }
 
 export interface BudgetEstimate {
@@ -23,7 +56,7 @@ export interface BudgetEstimate {
   accommodation: AccommodationEstimate;
   food: number;
   transport: number;
-  activities: number;
+  activities: ActivitiesEstimate;
   total: number;
   currency: string;
   confidence: 'high' | 'medium' | 'low';

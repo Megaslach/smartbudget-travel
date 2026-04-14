@@ -1,69 +1,54 @@
 import { Router, Request, Response } from 'express';
-import { openai } from '../config/openai';
+import { searchCities, City, Airport } from '../data/airports';
 
 const router = Router();
 
-const DESTINATIONS_CACHE: Record<string, { name: string; country: string; image: string; emoji: string }[]> = {};
-
-router.get('/destinations/search', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const query = (req.query.q as string || '').trim();
-    if (query.length < 2) {
-      res.json({ destinations: [] });
-      return;
-    }
-
-    if (DESTINATIONS_CACHE[query.toLowerCase()]) {
-      res.json({ destinations: DESTINATIONS_CACHE[query.toLowerCase()] });
-      return;
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'Tu retournes uniquement du JSON valide. Pas de texte supplémentaire.' },
-        {
-          role: 'user',
-          content: `Donne 5 destinations de voyage populaires qui correspondent à "${query}". 
-Retourne un JSON array avec cette structure exacte :
-[{"name":"Nom de la ville","country":"Pays","emoji":"drapeau emoji du pays","image":"un terme de recherche Unsplash pertinent pour cette destination (en anglais, ex: 'tokyo skyline', 'bali beach')"}]
-Retourne UNIQUEMENT le JSON array.`,
-        },
-      ],
-      temperature: 0.5,
-      max_tokens: 500,
-    });
-
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      res.json({ destinations: [] });
-      return;
-    }
-
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      res.json({ destinations: [] });
-      return;
-    }
-
-    const destinations = JSON.parse(jsonMatch[0]).map((d: any) => ({
-      name: d.name,
-      country: d.country,
-      emoji: d.emoji,
-      image: `https://source.unsplash.com/400x300/?${encodeURIComponent(d.image)}`,
-    }));
-
-    DESTINATIONS_CACHE[query.toLowerCase()] = destinations;
-    res.json({ destinations });
-  } catch (error) {
-    console.error('Destination search error:', error);
-    const fallbackQuery = (req.query.q as string || '').trim();
-    res.json({
-      destinations: [
-        { name: fallbackQuery, country: '', emoji: '🌍', image: `https://source.unsplash.com/400x300/?${encodeURIComponent(fallbackQuery)}+travel` },
-      ],
-    });
+router.get('/destinations/search', (req: Request, res: Response): void => {
+  const query = (req.query.q as string || '').trim();
+  if (query.length < 1) {
+    res.json({ destinations: [] });
+    return;
   }
+
+  const results = searchCities(query);
+  const destinations = results.map((city) => ({
+    name: city.name,
+    country: city.country,
+    countryCode: city.countryCode,
+    emoji: city.emoji,
+    airports: city.airports,
+    image: `https://images.unsplash.com/photo-1500835556837-99ac94a94552?w=400&h=300&fit=crop&q=80`,
+    imageQuery: city.image,
+    matchType: city.matchType,
+    popular: city.popular || false,
+  }));
+
+  res.json({ destinations });
+});
+
+router.get('/airports/search', (req: Request, res: Response): void => {
+  const query = (req.query.q as string || '').trim();
+  if (query.length < 1) {
+    res.json({ airports: [] });
+    return;
+  }
+
+  const results = searchCities(query);
+  const airports: { city: string; country: string; emoji: string; code: string; airportName: string }[] = [];
+
+  results.forEach((city) => {
+    city.airports.forEach((airport: Airport) => {
+      airports.push({
+        city: city.name,
+        country: city.country,
+        emoji: city.emoji,
+        code: airport.code,
+        airportName: airport.name,
+      });
+    });
+  });
+
+  res.json({ airports });
 });
 
 export default router;

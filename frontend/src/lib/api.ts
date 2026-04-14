@@ -52,9 +52,13 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
-  // Destinations
-  async searchDestinations(query: string): Promise<{ destinations: { name: string; country: string; emoji: string; image: string }[] }> {
+  // Destinations & Airports
+  async searchDestinations(query: string): Promise<{ destinations: { name: string; country: string; countryCode: string; emoji: string; airports: { code: string; name: string }[]; image: string; imageQuery: string; matchType: string; popular: boolean }[] }> {
     return this.request(`/destinations/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async searchAirports(query: string): Promise<{ airports: { city: string; country: string; emoji: string; code: string; airportName: string }[] }> {
+    return this.request(`/airports/search?q=${encodeURIComponent(query)}`);
   }
 
   // Simulations
