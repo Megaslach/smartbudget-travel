@@ -12,7 +12,9 @@ export const loginSchema = z.object({
 
 export const simulationSchema = z.object({
   destination: z.string().min(2, 'Destination requise'),
-  duration: z.number().int().min(1, 'Durée minimum 1 jour').max(30, 'Durée maximum 30 jours'),
+  departureCity: z.string().min(2, 'Ville de départ requise'),
+  startDate: z.string().min(1, 'Date de départ requise'),
+  endDate: z.string().min(1, 'Date de retour requise'),
   people: z.number().int().min(1, 'Minimum 1 personne').max(20, 'Maximum 20 personnes'),
 });
 

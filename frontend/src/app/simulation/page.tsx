@@ -14,6 +14,9 @@ interface SimulationResult {
   id: string;
   budget: BudgetEstimate;
   destination: string;
+  departureCity: string;
+  startDate: string;
+  endDate: string;
   duration: number;
   people: number;
 }
@@ -29,14 +32,17 @@ export default function SimulationPage() {
     return null;
   }
 
-  const handleSimulate = async (data: { destination: string; duration: number; people: number }) => {
+  const handleSimulate = async (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number }) => {
     setIsSimulating(true);
     try {
-      const response = await api.simulate(data.destination, data.duration, data.people);
+      const response = await api.simulate(data);
       setResult({
         id: response.simulation.id,
         budget: response.simulation.budget,
         destination: response.simulation.destination,
+        departureCity: response.simulation.departureCity,
+        startDate: response.simulation.startDate,
+        endDate: response.simulation.endDate,
         duration: response.simulation.duration,
         people: response.simulation.people,
       });

@@ -52,11 +52,16 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
+  // Destinations
+  async searchDestinations(query: string): Promise<{ destinations: { name: string; country: string; emoji: string; image: string }[] }> {
+    return this.request(`/destinations/search?q=${encodeURIComponent(query)}`);
+  }
+
   // Simulations
-  async simulate(destination: string, duration: number, people: number): Promise<SimulationResponse> {
+  async simulate(data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number }): Promise<SimulationResponse> {
     return this.request<SimulationResponse>('/simulate', {
       method: 'POST',
-      body: JSON.stringify({ destination, duration, people }),
+      body: JSON.stringify(data),
     });
   }
 

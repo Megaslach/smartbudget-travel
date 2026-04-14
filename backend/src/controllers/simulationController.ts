@@ -12,8 +12,12 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    const { destination, duration, people } = validation.data;
-    const budgetEstimate = estimateBudget(destination, duration, people);
+    const { destination, departureCity, startDate, endDate, people } = validation.data;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const duration = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+
+    const budgetEstimate = await estimateBudget({ destination, departureCity, startDate, endDate, duration, people });
 
     const simulation = await prisma.simulation.create({
       data: {
@@ -29,6 +33,9 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       simulation: {
         id: simulation.id,
         destination: simulation.destination,
+        departureCity,
+        startDate,
+        endDate,
         duration: simulation.duration,
         people: simulation.people,
         budget: budgetEstimate,

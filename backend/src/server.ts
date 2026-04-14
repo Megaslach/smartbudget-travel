@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { env } from './config/env';
 import authRoutes from './routes/authRoutes';
 import simulationRoutes from './routes/simulationRoutes';
 import tripRoutes from './routes/tripRoutes';
 import stripeRoutes from './routes/stripeRoutes';
+import destinationRoutes from './routes/destinationRoutes';
 import { handleWebhook } from './controllers/stripeController';
 
 const app = express();
@@ -21,10 +23,19 @@ app.use('/api/auth', authRoutes);
 app.use('/api', simulationRoutes);
 app.use('/api', tripRoutes);
 app.use('/api', stripeRoutes);
+app.use('/api', destinationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve frontend static files in production
+const frontendPath = path.join(__dirname, '..', 'public');
+app.use(express.static(frontendPath));
+app.get('*', (_req, res) => {
+  const indexPath = path.join(frontendPath, 'index.html');
+  res.sendFile(indexPath);
 });
 
 app.listen(env.PORT, () => {

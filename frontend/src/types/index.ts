@@ -5,18 +5,37 @@ export interface User {
   createdAt?: string;
 }
 
+export interface FlightEstimate {
+  avgPrice: number;
+  source: string;
+  note: string;
+}
+
+export interface AccommodationEstimate {
+  avgPerNight: number;
+  total: number;
+  source: string;
+  note: string;
+}
+
 export interface BudgetEstimate {
-  accommodation: number;
+  flights: FlightEstimate;
+  accommodation: AccommodationEstimate;
   food: number;
   transport: number;
   activities: number;
   total: number;
   currency: string;
+  confidence: 'high' | 'medium' | 'low';
+  summary: string;
 }
 
 export interface Simulation {
   id: string;
   destination: string;
+  departureCity: string;
+  startDate: string;
+  endDate: string;
   duration: number;
   people: number;
   budget: number | BudgetEstimate;
@@ -47,6 +66,9 @@ export interface SimulationResponse {
   simulation: {
     id: string;
     destination: string;
+    departureCity: string;
+    startDate: string;
+    endDate: string;
     duration: number;
     people: number;
     budget: BudgetEstimate;
