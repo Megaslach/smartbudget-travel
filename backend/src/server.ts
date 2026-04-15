@@ -39,9 +39,13 @@ app.get('*', (_req, res) => {
   res.sendFile(indexPath);
 });
 
-app.listen(env.PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${env.PORT}`);
-  startPriceAlertCron();
-});
+// Only start the HTTP listener + cron when running as a standalone Node process
+// (skipped in serverless environments where `server.ts` is imported as a module)
+if (require.main === module) {
+  app.listen(env.PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${env.PORT}`);
+    startPriceAlertCron();
+  });
+}
 
 export default app;
