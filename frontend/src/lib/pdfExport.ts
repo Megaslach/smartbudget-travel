@@ -251,6 +251,81 @@ export async function exportSimulationPdf(sim: Simulation): Promise<void> {
     y += 4;
   }
 
+  // ---------- LOCAL TRANSPORT ----------
+  if (budget.localTransport && (budget.localTransport.carRentals.options.length > 0 || budget.localTransport.publicTransport.options.length > 0)) {
+    y = ensureSpace(pdf, y, 40, margin);
+    sectionHeader(pdf, 'Transport sur place', margin, y, contentW);
+    y += 10;
+
+    if (budget.localTransport.recommendation) {
+      pdf.setTextColor(...MUTED);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(8);
+      const wrapped = pdf.splitTextToSize(budget.localTransport.recommendation, contentW);
+      pdf.text(wrapped, margin, y);
+      y += wrapped.length * 4 + 3;
+    }
+
+    if (budget.localTransport.carRentals.options.length > 0) {
+      y = ensureSpace(pdf, y, 20, margin);
+      pdf.setTextColor(...TEXT);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.text('Location de voiture', margin, y + 4);
+      y += 7;
+
+      budget.localTransport.carRentals.options.slice(0, 6).forEach((c) => {
+        y = ensureSpace(pdf, y, 14, margin);
+        pdf.setDrawColor(...BORDER);
+        pdf.roundedRect(margin, y, contentW, 12, 2, 2, 'S');
+        pdf.setTextColor(...TEXT);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.text(`${c.provider} — ${c.category}`.substring(0, 48), margin + 4, y + 5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...MUTED);
+        pdf.setFontSize(8);
+        const sub = [c.location, c.features.slice(0, 2).join(' · ')].filter(Boolean).join(' · ');
+        pdf.text(sub.substring(0, 70), margin + 4, y + 9.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...PRIMARY);
+        pdf.setFontSize(10);
+        pdf.text(`${eur(c.pricePerDay)}/jour`, margin + contentW - 4, y + 7, { align: 'right' });
+        y += 14;
+      });
+      y += 2;
+    }
+
+    if (budget.localTransport.publicTransport.options.length > 0) {
+      y = ensureSpace(pdf, y, 20, margin);
+      pdf.setTextColor(...TEXT);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.text('Transports & taxi', margin, y + 4);
+      y += 7;
+
+      budget.localTransport.publicTransport.options.forEach((t) => {
+        y = ensureSpace(pdf, y, 10, margin);
+        pdf.setDrawColor(...BORDER);
+        pdf.roundedRect(margin, y, contentW, 8, 2, 2, 'S');
+        pdf.setTextColor(...TEXT);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.text(t.name.substring(0, 36), margin + 3, y + 3.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...MUTED);
+        pdf.setFontSize(7);
+        pdf.text(t.description.substring(0, 60), margin + 3, y + 6.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...PRIMARY);
+        pdf.setFontSize(9);
+        pdf.text(eur(t.price), margin + contentW - 3, y + 5, { align: 'right' });
+        y += 10;
+      });
+      y += 4;
+    }
+  }
+
   // ---------- ACTIVITIES ----------
   if (typeof budget.activities === 'object' && budget.activities.options?.length) {
     y = ensureSpace(pdf, y, 40, margin);

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { BudgetEstimate } from '@/types';
 import Card from '@/components/atoms/Card';
-import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle, Car, Train, MapPin } from 'lucide-react';
 
 interface BudgetResultCardProps {
   budget: BudgetEstimate;
@@ -231,6 +231,116 @@ export default function BudgetResultCard({ budget, destination, duration, people
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-3">{budget.accommodation.note}</p>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Transport sur place */}
+      {budget.localTransport && (budget.localTransport.carRentals.options.length > 0 || budget.localTransport.publicTransport.options.length > 0) && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Card>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Car className="h-5 w-5 text-emerald-500" /> Transport sur place
+              </h4>
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                Budget estimé : {budget.localTransport.estimatedBudget.toLocaleString()}€
+              </span>
+            </div>
+
+            {budget.localTransport.recommendation && (
+              <div className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                <MapPin className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-emerald-900 leading-relaxed">{budget.localTransport.recommendation}</p>
+              </div>
+            )}
+
+            {budget.localTransport.carRentals.options.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-semibold text-sm text-gray-700 flex items-center gap-1.5">
+                    <Car className="h-4 w-4 text-emerald-500" /> Location de voiture
+                  </h5>
+                  <a href={budget.localTransport.carRentals.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                    Comparer sur Kayak <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {budget.localTransport.carRentals.options.map((c, i) => (
+                    <a key={i} href={c.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col bg-white rounded-xl border border-emerald-100 overflow-hidden hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/10 transition-all group">
+                      <div className="relative h-28 bg-gradient-to-br from-emerald-100 to-emerald-50 overflow-hidden">
+                        {c.imageUrl ? (
+                          <img src={c.imageUrl} alt={c.category} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Car className="h-10 w-10 text-emerald-300" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
+                          <p className="font-bold text-sm text-gray-900">{c.pricePerDay}€<span className="text-[10px] text-gray-400 font-normal">/jour</span></p>
+                        </div>
+                        <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+                          {c.provider}
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <p className="font-medium text-gray-900 text-sm">{c.category}</p>
+                        <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {c.location}</p>
+                        {c.features.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {c.features.slice(0, 3).map((f, fi) => (
+                              <span key={fi} className="text-[10px] px-1.5 py-0.5 bg-sand-100 text-gray-600 rounded">{f}</span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-sand-100">
+                          <p className="text-[11px] text-gray-400">total {c.totalPrice.toLocaleString()}€ ({duration}j)</p>
+                          <span className="text-[10px] font-semibold text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {budget.localTransport.publicTransport.options.length > 0 && (
+              <div>
+                <h5 className="font-semibold text-sm text-gray-700 flex items-center gap-1.5 mb-3">
+                  <Train className="h-4 w-4 text-emerald-500" /> Transports & taxi
+                </h5>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {budget.localTransport.publicTransport.options.map((t, i) => {
+                    const typeLabel: Record<string, { label: string; icon: typeof Train; color: string }> = {
+                      single: { label: 'Unitaire', icon: Train, color: 'text-sky-500' },
+                      day_pass: { label: 'Pass 24h', icon: Train, color: 'text-indigo-500' },
+                      multi_day: { label: 'Pass multi-jours', icon: Train, color: 'text-violet-500' },
+                      taxi: { label: 'Taxi', icon: Car, color: 'text-amber-500' },
+                      uber: { label: 'Uber/VTC', icon: Car, color: 'text-gray-700' },
+                      airport_transfer: { label: 'Navette', icon: Bus, color: 'text-orange-500' },
+                      bike: { label: 'Vélo', icon: Bus, color: 'text-emerald-500' },
+                    };
+                    const meta = typeLabel[t.type] || typeLabel.single;
+                    const Icon = meta.icon;
+                    return (
+                      <div key={i} className="flex items-start gap-2 p-3 rounded-xl bg-white border border-emerald-100 hover:border-emerald-200 transition-colors">
+                        <div className={`p-1.5 rounded-lg bg-sand-50 ${meta.color} flex-shrink-0`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-gray-900 text-sm truncate">{t.name}</p>
+                            <p className="font-bold text-sm text-gray-900 whitespace-nowrap">{t.price}€</p>
+                          </div>
+                          <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{t.description}</p>
+                          <span className="inline-block mt-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{meta.label}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
         </motion.div>
       )}

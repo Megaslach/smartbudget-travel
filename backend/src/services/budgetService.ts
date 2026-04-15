@@ -39,6 +39,36 @@ export interface ActivityOption {
   imageUrl?: string;
 }
 
+export interface CarRentalOption {
+  provider: string;
+  category: string;
+  pricePerDay: number;
+  totalPrice: number;
+  location: string;
+  features: string[];
+  bookingUrl: string;
+  imageUrl?: string;
+}
+
+export interface PublicTransportOption {
+  name: string;
+  type: 'single' | 'day_pass' | 'multi_day' | 'taxi' | 'uber' | 'airport_transfer' | 'bike';
+  price: number;
+  description: string;
+}
+
+export interface LocalTransportEstimate {
+  estimatedBudget: number;
+  recommendation: string;
+  carRentals: {
+    options: CarRentalOption[];
+    searchUrl: string;
+  };
+  publicTransport: {
+    options: PublicTransportOption[];
+  };
+}
+
 export interface FlightEstimate {
   avgPrice: number;
   source: string;
@@ -70,6 +100,7 @@ export interface BudgetEstimate {
   accommodation: AccommodationEstimate;
   food: number;
   transport: number;
+  localTransport?: LocalTransportEstimate;
   activities: ActivitiesEstimate;
   total: number;
   currency: string;
@@ -111,6 +142,30 @@ function buildActivityImageUrl(activityName: string, destination: string): strin
   return `https://source.unsplash.com/400x300/?${keywords}`;
 }
 
+function buildCarRentalImageUrl(category: string): string {
+  const k = category.toLowerCase();
+  let keywords = 'rental,car';
+  if (k.includes('suv') || k.includes('4x4')) keywords = 'suv,car';
+  else if (k.includes('premium') || k.includes('luxe')) keywords = 'luxury,car';
+  else if (k.includes('compact')) keywords = 'compact,car';
+  else if (k.includes('écon') || k.includes('econ')) keywords = 'economy,hatchback,car';
+  else if (k.includes('berline') || k.includes('sedan')) keywords = 'sedan,car';
+  else if (k.includes('mini')) keywords = 'mini,city,car';
+  else if (k.includes('van') || k.includes('monospace')) keywords = 'minivan,car';
+  return `https://source.unsplash.com/400x300/?${encodeURIComponent(keywords)}`;
+}
+
+function buildCarRentalBookingUrl(provider: string, destination: string, startDate: string, endDate: string): string {
+  const destEnc = encodeURIComponent(destination);
+  const prov = provider.toLowerCase();
+  if (prov.includes('hertz')) return `https://www.hertz.fr/rentacar/reservation/?pickupLocation=${destEnc}&pickupDate=${startDate}&returnDate=${endDate}`;
+  if (prov.includes('avis')) return `https://www.avis.fr/reserver/location-voiture?pickupLocation=${destEnc}&pickupDate=${startDate}&returnDate=${endDate}`;
+  if (prov.includes('europcar')) return `https://www.europcar.fr/fr-fr/rechercher-une-voiture-de-location?pickupLocation=${destEnc}&pickupDate=${startDate}&returnDate=${endDate}`;
+  if (prov.includes('sixt')) return `https://www.sixt.fr/location-de-voiture/?pickupLocation=${destEnc}&pickupDate=${startDate}&returnDate=${endDate}`;
+  if (prov.includes('enterprise')) return `https://www.enterprise.fr/fr/reservation.html?pickupLocation=${destEnc}&pickupDate=${startDate}&returnDate=${endDate}`;
+  return `https://www.kayak.fr/cars/${destEnc}/${startDate}/${endDate}`;
+}
+
 function buildSearchUrls(input: SimulationInput, originCode?: string, destCode?: string) {
   const { destination, departureCity, startDate, endDate, people } = input;
   const area = input.premiumFilters?.accommodationArea;
@@ -133,6 +188,7 @@ function buildSearchUrls(input: SimulationInput, originCode?: string, destCode?:
     booking: `https://www.booking.com/searchresults.fr.html?ss=${accomEnc}&checkin=${startDate}&checkout=${endDate}&group_adults=${people}`,
     airbnb: `https://www.airbnb.fr/s/${accomEnc}/homes?checkin=${startDate}&checkout=${endDate}&adults=${people}`,
     getyourguide: `https://www.getyourguide.fr/s/?q=${destEnc}`,
+    kayakCars: `https://www.kayak.fr/cars/${destEnc}/${startDate}/${endDate}`,
   };
 }
 
@@ -382,6 +438,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
     accommodation,
     food: aiData.food,
     transport: aiData.transport,
+    localTransport: aiData.localTransport,
     activities,
     total,
     currency: 'EUR',
@@ -400,6 +457,7 @@ async function getAiEstimates(
   accommodation: AccommodationEstimate;
   food: number;
   transport: number;
+  localTransport: LocalTransportEstimate;
   activities: ActivitiesEstimate;
   summary: string;
 }> {
@@ -423,10 +481,29 @@ Retourne UNIQUEMENT ce JSON :
   ${!hasRealFlights ? `"flights":{"avgPrice":<A/R par pers EUR>,"note":"<info>","options":[{"airline":"<compagnie>","price":<prix>,"type":"direct/escale"}]},` : ''}
   ${!hasRealHotels ? `"accommodation":{"avgPerNight":<par nuit groupe>,"total":<total>,"note":"<info>","options":[{"name":"<hotel>","type":"<type>","pricePerNight":<prix>,"rating":<note>}]},` : ''}
   "food":<total nourriture>,
-  "transport":<total transport local>,
+  "transport":<total transport local EUR pour tout le séjour et le groupe>,
+  "localTransport":{
+    "recommendation":"<1 phrase : voiture recommandée ou transports en commun suffisants, pourquoi>",
+    "carRentals":[
+      {"provider":"<Hertz/Avis/Europcar/Sixt/Enterprise>","category":"<Économique/Compacte/Berline/SUV/Premium>","pricePerDay":<EUR/jour réaliste>,"location":"<aéroport ou ville précise>","features":["<boîte auto/manuelle>","<X places>","<climatisation>"]}
+    ],
+    "publicTransport":[
+      {"name":"<ex: Ticket métro/bus unitaire>","type":"single","price":<prix EUR>,"description":"<validité, correspondances>"},
+      {"name":"<ex: Pass journée>","type":"day_pass","price":<prix EUR>,"description":"<détail>"},
+      {"name":"<ex: Pass 3 jours touristique>","type":"multi_day","price":<prix EUR>,"description":"<détail>"},
+      {"name":"<ex: Uber centre ↔ aéroport>","type":"uber","price":<prix EUR moyen>,"description":"<durée approximative>"},
+      {"name":"<ex: Taxi course moyenne>","type":"taxi","price":<prix EUR>,"description":"<détail>"},
+      {"name":"<ex: Navette aéroport officielle>","type":"airport_transfer","price":<prix EUR>,"description":"<fréquence>"}
+    ]
+  },
   "activities":{"total":<total>,"perDayPerPerson":<par jour/pers>,"options":[{"name":"<activité réelle>","price":<prix/pers>,"duration":"<durée>"}]},
   "summary":"<2 phrases résumé>"
-}`;
+}
+
+IMPORTANT pour localTransport :
+- Fournis 3 catégories de voiture différentes (ex: Économique/SUV/Premium), prix réalistes pour ${destination}
+- publicTransport : prix locaux RÉELS pour ${destination} (métro, pass, taxi, Uber). Adapte au pays/ville.
+- Si la destination n'a pas de métro, retire l'option et mets bus/tram à la place.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -485,21 +562,63 @@ Retourne UNIQUEMENT ce JSON :
       })),
     };
 
+    const transportTotal = parsed.transport || 15 * duration * people;
+    const carRentals: CarRentalOption[] = (parsed.localTransport?.carRentals || []).map((c: any) => {
+      const pricePerDay = Number(c.pricePerDay) || 35;
+      return {
+        provider: c.provider || 'Europcar',
+        category: c.category || 'Économique',
+        pricePerDay,
+        totalPrice: Math.round(pricePerDay * duration),
+        location: c.location || `${destination} — Aéroport`,
+        features: Array.isArray(c.features) ? c.features : [],
+        bookingUrl: buildCarRentalBookingUrl(c.provider || '', destination, startDate, endDate),
+        imageUrl: buildCarRentalImageUrl(c.category || ''),
+      };
+    });
+
+    const publicTransport: PublicTransportOption[] = (parsed.localTransport?.publicTransport || []).map((p: any) => ({
+      name: p.name || 'Ticket unitaire',
+      type: p.type || 'single',
+      price: Number(p.price) || 0,
+      description: p.description || '',
+    }));
+
+    const localTransport: LocalTransportEstimate = {
+      estimatedBudget: transportTotal,
+      recommendation: parsed.localTransport?.recommendation || 'Les transports en commun couvrent la plupart des déplacements ; louez une voiture pour les excursions hors zone urbaine.',
+      carRentals: {
+        options: carRentals,
+        searchUrl: urls.kayakCars,
+      },
+      publicTransport: {
+        options: publicTransport,
+      },
+    };
+
     return {
       flights: flightsAi,
       accommodation: accomAi,
       food: parsed.food || 40 * duration * people,
-      transport: parsed.transport || 15 * duration * people,
+      transport: transportTotal,
+      localTransport,
       activities,
       summary: parsed.summary || '',
     };
   } catch (error) {
     console.error('AI estimation failed:', error);
+    const fallbackTransport = 15 * duration * people;
     return {
       flights: { avgPrice: 300, source: 'Estimation par défaut', note: '', searchUrl: urls.skyscanner, isRealData: false, options: [{ airline: 'Voir sur Skyscanner', price: 300, type: 'Rechercher', bookingUrl: urls.skyscanner }] },
       accommodation: { avgPerNight: 80, total: 80 * duration, source: 'Estimation par défaut', note: '', searchUrl: urls.booking, isRealData: false, options: [{ name: 'Voir sur Booking', type: 'Hôtel', pricePerNight: 80, rating: 0, bookingUrl: urls.booking }] },
       food: 40 * duration * people,
-      transport: 15 * duration * people,
+      transport: fallbackTransport,
+      localTransport: {
+        estimatedBudget: fallbackTransport,
+        recommendation: 'Consultez Kayak ou Booking Cars pour comparer les prix de location et prévoyez un pass de transports en commun.',
+        carRentals: { options: [], searchUrl: urls.kayakCars },
+        publicTransport: { options: [] },
+      },
       activities: { total: 25 * duration * people, perDayPerPerson: 25, searchUrl: urls.getyourguide, options: [] },
       summary: 'Prix indicatifs générés par IA. Configurez SERPAPI_KEY pour obtenir les vrais prix Google Flights + Google Hotels.',
     };

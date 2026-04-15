@@ -37,6 +37,36 @@ export interface ActivityOption {
   imageUrl?: string;
 }
 
+export interface CarRentalOption {
+  provider: string;
+  category: string;
+  pricePerDay: number;
+  totalPrice: number;
+  location: string;
+  features: string[];
+  bookingUrl: string;
+  imageUrl?: string;
+}
+
+export interface PublicTransportOption {
+  name: string;
+  type: 'single' | 'day_pass' | 'multi_day' | 'taxi' | 'uber' | 'airport_transfer' | 'bike';
+  price: number;
+  description: string;
+}
+
+export interface LocalTransportEstimate {
+  estimatedBudget: number;
+  recommendation: string;
+  carRentals: {
+    options: CarRentalOption[];
+    searchUrl: string;
+  };
+  publicTransport: {
+    options: PublicTransportOption[];
+  };
+}
+
 export interface FlightEstimate {
   avgPrice: number;
   source: string;
@@ -77,6 +107,7 @@ export interface BudgetEstimate {
   accommodation: AccommodationEstimate;
   food: number;
   transport: number;
+  localTransport?: LocalTransportEstimate;
   activities: ActivitiesEstimate;
   total: number;
   currency: string;
