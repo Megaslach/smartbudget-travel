@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Users, TrendingUp, Sparkles, Eye, RefreshCw, Clock, Plane, Hotel, TrendingDown, Minus, Share2, Link2, Check } from 'lucide-react';
+import { MapPin, Calendar, Users, TrendingUp, Sparkles, Eye, RefreshCw, Clock, Plane, Hotel, TrendingDown, Minus, Share2, Check, Trash2, Download } from 'lucide-react';
 import { Simulation, PriceCheckResponse } from '@/types';
 import { api } from '@/lib/api';
 import Card from '@/components/atoms/Card';
@@ -12,7 +12,11 @@ import Badge from '@/components/atoms/Badge';
 import Button from '@/components/atoms/Button';
 import BudgetResultCard from '@/components/molecules/BudgetResultCard';
 import AiTipsCard from '@/components/molecules/AiTipsCard';
+import ItineraryCard from '@/components/molecules/ItineraryCard';
+import CollabPanel from '@/components/molecules/CollabPanel';
+import PriceAlertPanel from '@/components/molecules/PriceAlertPanel';
 import { useAuth } from '@/context/AuthContext';
+import { Scale } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function DashboardPanel() {
@@ -26,6 +30,8 @@ export default function DashboardPanel() {
   const [isCheckingPrice, setIsCheckingPrice] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   useEffect(() => {
     const fetchSimulations = async () => {
@@ -64,6 +70,40 @@ export default function DashboardPanel() {
     finally { setIsCheckingPrice(false); }
   };
 
+  const handleDelete = async (simId: string) => {
+    if (!window.confirm('Supprimer définitivement cette simulation ?')) return;
+    setDeletingId(simId);
+    try {
+      await api.deleteSimulation(simId);
+      setSimulations((prev) => prev.filter((s) => s.id !== simId));
+      if (selectedId === simId) { setSelectedId(null); setDetail(null); setPriceCheck(null); }
+      toast.success('Simulation supprimée');
+    } catch {
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleExportPdf = async (sim: Simulation) => {
+    const source = detail ?? sim;
+    if (!source.budgetData && typeof source.budget !== 'object') {
+      toast.error('Détails non disponibles pour l\'export');
+      return;
+    }
+    setIsExportingPdf(true);
+    try {
+      const { exportSimulationPdf } = await import('@/lib/pdfExport');
+      await exportSimulationPdf(source);
+      toast.success('PDF exporté !');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erreur export PDF');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handleShare = async (simId: string) => {
     const url = `${window.location.origin}/shared/${simId}`;
     try {
@@ -92,6 +132,16 @@ export default function DashboardPanel() {
 
   return (
     <div className="space-y-8">
+      {/* Quick actions row */}
+      <div className="flex flex-wrap gap-3">
+        <Button variant="primary" onClick={() => router.push('/simulation')}>
+          <Sparkles className="h-4 w-4" /> Nouvelle simulation
+        </Button>
+        <Button variant="outline" onClick={() => router.push('/compare')}>
+          <Scale className="h-4 w-4" /> Comparer des destinations
+        </Button>
+      </div>
+
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -177,10 +227,24 @@ export default function DashboardPanel() {
                         >
                           {copiedId === sim.id ? <Check className="h-4 w-4 text-emerald-500" /> : <Share2 className="h-4 w-4" />}
                         </button>
+                        {sim.role !== 'editor' && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(sim.id); }}
+                            disabled={deletingId === sim.id}
+                            className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                         <Eye className={`h-4 w-4 transition-transform ${isSelected ? 'text-primary-600' : 'text-gray-300'}`} />
                       </div>
                     </div>
-                    {sim.itinerary && <Badge variant="success" className="mt-3">Itinéraire généré</Badge>}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {sim.itinerary && <Badge variant="success">Itinéraire généré</Badge>}
+                      {sim.role === 'editor' && <Badge variant="default">Partagé par {sim.sharedBy}</Badge>}
+                      {sim.priceAlertEnabled && <Badge variant="default">🔔 Alertes actives</Badge>}
+                    </div>
                   </Card>
 
                   {/* Expanded detail */}
@@ -190,8 +254,30 @@ export default function DashboardPanel() {
                         <div className="py-8 flex justify-center"><Loader size="md" text="Chargement des détails..." /></div>
                       ) : detail?.budgetData ? (
                         <>
-                          <BudgetResultCard budget={detail.budgetData} destination={detail.destination} duration={detail.duration} people={detail.people} />
-                          {detail.aiTips && <AiTipsCard tips={detail.aiTips} />}
+                          <div className="flex justify-end">
+                            <Button variant="outline" size="sm" onClick={() => handleExportPdf(sim)} disabled={isExportingPdf}>
+                              {isExportingPdf ? <><RefreshCw className="h-4 w-4 animate-spin" /> Export...</> : <><Download className="h-4 w-4" /> Exporter en PDF</>}
+                            </Button>
+                          </div>
+                          <div className="space-y-4 bg-white">
+                            <BudgetResultCard budget={detail.budgetData} destination={detail.destination} duration={detail.duration} people={detail.people} />
+                            {detail.aiTips && <AiTipsCard tips={detail.aiTips} simulationId={sim.id} />}
+                            {detail.itinerary && <ItineraryCard itinerary={detail.itinerary} />}
+                          </div>
+
+                          {detail.role !== 'editor' && (
+                            <PriceAlertPanel
+                              simulationId={sim.id}
+                              initialEnabled={detail.priceAlertEnabled ?? false}
+                              initialThreshold={detail.priceAlertThreshold ?? 10}
+                            />
+                          )}
+
+                          <CollabPanel
+                            simulationId={sim.id}
+                            isOwner={detail.role !== 'editor'}
+                            currentUserId={user?.id}
+                          />
 
                           {/* Price check section */}
                           <Card>

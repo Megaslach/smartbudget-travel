@@ -1,4 +1,8 @@
-import { AuthResponse, SimulationResponse, TripResponse, Simulation, PriceCheckResponse } from '@/types';
+import {
+  AuthResponse, SimulationResponse, TripResponse, Simulation, PriceCheckResponse,
+  CompareResponse, CollaboratorsResponse, Comment, InviteInfo, PriceAlertConfig, PricePoint,
+  FlexibleDatesScanResponse,
+} from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -102,6 +106,10 @@ class ApiClient {
     return this.request(`/simulation/${id}/price-check`);
   }
 
+  async deleteSimulation(id: string): Promise<{ success: boolean }> {
+    return this.request(`/simulation/${id}`, { method: 'DELETE' });
+  }
+
   async getSharedSimulation(id: string): Promise<{ simulation: Simulation & { sharedBy: string } }> {
     return this.request(`/shared/${id}`);
   }
@@ -111,6 +119,72 @@ class ApiClient {
     return this.request('/create-checkout-session', {
       method: 'POST',
     });
+  }
+
+  // Feature 8: Comparator
+  async compareDestinations(data: {
+    destinations: string[];
+    departureCity: string;
+    startDate: string;
+    endDate: string;
+    people: number;
+  }): Promise<CompareResponse> {
+    return this.request<CompareResponse>('/compare', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Feature 6: Collaboration
+  async createInvite(simulationId: string): Promise<{ token: string; expiresAt: string }> {
+    return this.request(`/simulation/${simulationId}/invite`, { method: 'POST' });
+  }
+
+  async getInviteInfo(token: string): Promise<InviteInfo> {
+    return this.request(`/invite/${token}`);
+  }
+
+  async acceptInvite(token: string): Promise<{ simulationId: string }> {
+    return this.request(`/invite/${token}/accept`, { method: 'POST' });
+  }
+
+  async listCollaborators(simulationId: string): Promise<CollaboratorsResponse> {
+    return this.request(`/simulation/${simulationId}/collaborators`);
+  }
+
+  async removeCollaborator(simulationId: string, userId: string): Promise<{ success: boolean }> {
+    return this.request(`/simulation/${simulationId}/collaborators/${userId}`, { method: 'DELETE' });
+  }
+
+  async listComments(simulationId: string): Promise<{ comments: Comment[] }> {
+    return this.request(`/simulation/${simulationId}/comments`);
+  }
+
+  async createComment(simulationId: string, data: { text: string; dayIndex?: number; activityIndex?: number }): Promise<{ comment: Comment }> {
+    return this.request(`/simulation/${simulationId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteComment(commentId: string): Promise<{ success: boolean }> {
+    return this.request(`/comment/${commentId}`, { method: 'DELETE' });
+  }
+
+  // Feature 1: Price alerts
+  async updatePriceAlert(simulationId: string, data: { enabled: boolean; threshold?: number }): Promise<{ alert: PriceAlertConfig }> {
+    return this.request(`/simulation/${simulationId}/alert`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPriceHistory(simulationId: string): Promise<{ history: PricePoint[] }> {
+    return this.request(`/simulation/${simulationId}/price-history`);
+  }
+
+  async scanFlexibleDates(simulationId: string): Promise<FlexibleDatesScanResponse> {
+    return this.request(`/simulation/${simulationId}/flexible-dates`);
   }
 }
 

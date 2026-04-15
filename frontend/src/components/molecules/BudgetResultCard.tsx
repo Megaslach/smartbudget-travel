@@ -18,29 +18,84 @@ const confidenceLabels = { high: 'Fiabilité haute', medium: 'Fiabilité moyenne
 export default function BudgetResultCard({ budget, destination, duration, people }: BudgetResultCardProps) {
   const flightsTotal = budget.flights.avgPrice * people;
   const activitiesTotal = typeof budget.activities === 'object' ? budget.activities.total : budget.activities;
+  const allAiEstimated = !budget.flights.isRealData && !budget.accommodation.isRealData;
+  const perPerson = (total: number) => (people > 0 ? Math.round(total / people) : total);
+  const totalPerPerson = perPerson(budget.total);
   const summaryCategories = [
-    { label: 'Vols A/R', value: flightsTotal, icon: Plane, color: 'text-sky-500', bg: 'bg-sky-50' },
-    { label: 'Hébergement', value: budget.accommodation.total, icon: Hotel, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-    { label: 'Restauration', value: budget.food, icon: Utensils, color: 'text-orange-500', bg: 'bg-orange-50' },
-    { label: 'Transport', value: budget.transport, icon: Bus, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { label: 'Activités', value: activitiesTotal, icon: Ticket, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { label: 'Vols A/R', value: flightsTotal, perPerson: budget.flights.avgPrice, icon: Plane, color: 'text-sky-500', bg: 'bg-sky-50', hint: `${budget.flights.avgPrice.toLocaleString()}€/pers × ${people}` },
+    { label: 'Hébergement', value: budget.accommodation.total, perPerson: perPerson(budget.accommodation.total), icon: Hotel, color: 'text-indigo-500', bg: 'bg-indigo-50', hint: `${budget.accommodation.avgPerNight}€/nuit × ${duration} nuit${duration > 1 ? 's' : ''}` },
+    { label: 'Restauration', value: budget.food, perPerson: perPerson(budget.food), icon: Utensils, color: 'text-orange-500', bg: 'bg-orange-50', hint: `groupe de ${people}` },
+    { label: 'Transport', value: budget.transport, perPerson: perPerson(budget.transport), icon: Bus, color: 'text-emerald-500', bg: 'bg-emerald-50', hint: 'sur place' },
+    { label: 'Activités', value: activitiesTotal, perPerson: perPerson(activitiesTotal), icon: Ticket, color: 'text-purple-500', bg: 'bg-purple-50', hint: `pour ${people} pers` },
   ];
 
   return (
     <div className="space-y-6">
+      {allAiEstimated && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex gap-3 items-start p-4 rounded-xl bg-amber-50 border border-amber-200"
+        >
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900">Prix indicatifs générés par IA</p>
+            <p className="text-xs text-amber-800 mt-0.5">
+              Les vrais prix en temps réel ne sont pas disponibles (API non configurée ou quota épuisé).
+              Les montants affichés sont des estimations basées sur les données historiques. Vérifiez le prix final avant de réserver.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header card */}
       <Card className="overflow-hidden">
-        <div className="gradient-primary text-white p-6 -m-6 mb-6">
-          <div className="flex items-start justify-between">
+        <div className="gradient-primary text-white p-6 -m-6 mb-6 relative overflow-hidden">
+          {/* Drifting sparkle accents */}
+          {[0, 1, 2, 3].map((i) => (
+            <motion.span
+              key={i}
+              className="absolute text-white/20 select-none text-xs"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: [0, 0.6, 0], y: [40, -20] }}
+              transition={{ duration: 3 + i * 0.4, repeat: Infinity, delay: i * 0.6, ease: 'easeOut' }}
+              style={{ left: `${15 + i * 22}%`, bottom: 0 }}
+            >
+              ✦
+            </motion.span>
+          ))}
+          <div className="relative flex items-start justify-between">
             <div>
               <h3 className="font-display text-xl font-bold">Budget estimé</h3>
               <p className="text-white/70 text-sm mt-1">{destination} — {duration} nuit{duration > 1 ? 's' : ''} — {people} voyageur{people > 1 ? 's' : ''}</p>
             </div>
-            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${confidenceColors[budget.confidence]}`}>{confidenceLabels[budget.confidence]}</span>
+            <motion.span
+              initial={{ scale: 0.6, rotate: -12, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              transition={{ type: 'spring', damping: 14, stiffness: 240, delay: 0.15 }}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${confidenceColors[budget.confidence]}`}
+            >
+              {confidenceLabels[budget.confidence]}
+            </motion.span>
           </div>
-          <div className="mt-4 flex items-end gap-3">
-            <span className="text-4xl font-extrabold">{budget.total.toLocaleString()}€</span>
-            <span className="text-white/50 text-sm pb-1">total estimé</span>
+          <div className="relative mt-4 flex flex-wrap items-end gap-x-4 gap-y-1">
+            <div className="flex items-end gap-2">
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="text-4xl font-extrabold"
+              >
+                {budget.total.toLocaleString()}€
+              </motion.span>
+              <span className="text-white/60 text-sm pb-1">total groupe</span>
+            </div>
+            {people > 1 && (
+              <div className="flex items-end gap-2 text-white/80">
+                <span className="text-2xl font-bold">{totalPerPerson.toLocaleString()}€</span>
+                <span className="text-white/60 text-sm pb-0.5">/personne</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -59,9 +114,17 @@ export default function BudgetResultCard({ budget, destination, duration, people
               <motion.div key={cat.label} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl ${cat.bg} ${cat.color}`}><Icon className="h-4 w-4" /></div>
                 <div className="flex-1">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{cat.label}</span>
-                    <span className="font-bold text-gray-900">{cat.value.toLocaleString()}€</span>
+                  <div className="flex justify-between items-baseline text-sm mb-1 gap-2">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-gray-700">{cat.label}</span>
+                      <span className="text-[10px] text-gray-400">{cat.hint}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-gray-900">{cat.value.toLocaleString()}€</span>
+                      {people > 1 && (
+                        <span className="block text-[10px] text-gray-400 font-normal">{cat.perPerson.toLocaleString()}€/pers</span>
+                      )}
+                    </div>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, delay: i * 0.06 }} className="h-full gradient-primary rounded-full" />
@@ -76,104 +139,141 @@ export default function BudgetResultCard({ budget, destination, duration, people
       {/* Vols */}
       {budget.flights.options && budget.flights.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Plane className="h-5 w-5 text-sky-500" /> Vols</h4>
-              {budget.flights.isRealData ? (
-                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Prix réels</span>
-              ) : (
-                <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Estimation IA</span>
-              )}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Plane className="h-5 w-5 text-sky-500" /> Vols</h4>
+                {budget.flights.isRealData ? (
+                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1" title={budget.flights.source}><CheckCircle2 className="h-3 w-3" />Prix réels</span>
+                ) : (
+                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation IA basée sur données historiques — vérifier le prix final sur Skyscanner"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
+                )}
+              </div>
+              <a href={budget.flights.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">{budget.flights.isRealData ? 'Réserver' : 'Voir sur Skyscanner'} <ExternalLink className="h-3 w-3" /></a>
             </div>
-            <a href={budget.flights.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Skyscanner <ExternalLink className="h-3 w-3" /></a>
-          </div>
-          <div className="grid gap-3">
-            {budget.flights.options.map((f, i) => {
-              const depTime = f.departureAt ? new Date(f.departureAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
-              const arrTime = f.arrivalAt ? new Date(f.arrivalAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
-              return (
-                <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 p-4 hover:border-sky-200 hover:shadow-md transition-all group">
-                  <div className="p-2 rounded-lg bg-sky-50"><Plane className="h-5 w-5 text-sky-500" /></div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 text-sm">{f.airline}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <span>{f.type}</span>
-                      {depTime && arrTime && (
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{depTime} → {arrTime}</span>
-                      )}
-                      {f.duration && <span>{f.duration}</span>}
+            <div className="grid gap-3">
+              {budget.flights.options.map((f, i) => {
+                const depTime = f.departureAt ? new Date(f.departureAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+                const arrTime = f.arrivalAt ? new Date(f.arrivalAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+                return (
+                  <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-gradient-to-r from-sky-50/50 to-white rounded-xl border border-sky-100 p-4 hover:border-sky-300 hover:shadow-lg hover:shadow-sky-500/10 transition-all group">
+                    <div className="p-2 rounded-lg bg-sky-100 group-hover:bg-sky-200 transition-colors"><Plane className="h-5 w-5 text-sky-600" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{f.airline}</p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+                        <span>{f.type}</span>
+                        {depTime && arrTime && (
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{depTime} → {arrTime}</span>
+                        )}
+                        {f.duration && <span>{f.duration}</span>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">{f.price.toLocaleString()}€<span className="text-xs text-gray-400 font-normal">/pers</span></p>
-                    <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-          <p className="text-xs text-gray-400 mt-2">{budget.flights.note}</p>
+                    <div className="text-right whitespace-nowrap">
+                      <p className="font-bold text-gray-900">{f.price.toLocaleString()}€<span className="text-xs text-gray-400 font-normal">/pers</span></p>
+                      {people > 1 && (
+                        <p className="text-[10px] text-gray-400">total {(f.price * people).toLocaleString()}€ ({people} pers)</p>
+                      )}
+                      <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-3">{budget.flights.note}</p>
+          </Card>
         </motion.div>
       )}
 
       {/* Hébergement */}
       {budget.accommodation.options && budget.accommodation.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Hotel className="h-5 w-5 text-indigo-500" /> Hébergement</h4>
-              {budget.accommodation.isRealData ? (
-                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Prix réels</span>
-              ) : (
-                <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Estimation IA</span>
-              )}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Hotel className="h-5 w-5 text-indigo-500" /> Hébergement</h4>
+                {budget.accommodation.isRealData ? (
+                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1" title={budget.accommodation.source}><CheckCircle2 className="h-3 w-3" />Prix réels</span>
+                ) : (
+                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation IA — vérifier le prix final sur Booking"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
+                )}
+              </div>
+              <a href={budget.accommodation.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Booking <ExternalLink className="h-3 w-3" /></a>
             </div>
-            <a href={budget.accommodation.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Booking <ExternalLink className="h-3 w-3" /></a>
-          </div>
-          <div className="grid gap-3">
-            {budget.accommodation.options.map((h, i) => (
-              <a key={i} href={h.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-white rounded-xl border border-gray-100 p-4 hover:border-indigo-200 hover:shadow-md transition-all group">
-                <div className="p-2 rounded-lg bg-indigo-50"><Hotel className="h-5 w-5 text-indigo-500" /></div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 text-sm">{h.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{h.type}</span>
-                    {h.rating && <span className="text-xs text-amber-500 flex items-center gap-0.5"><Star className="h-3 w-3 fill-amber-400" />{h.rating}</span>}
+            <div className="grid gap-3">
+              {budget.accommodation.options.map((h, i) => (
+                <a key={i} href={h.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-stretch gap-0 bg-white rounded-xl border border-indigo-100 overflow-hidden hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group">
+                  <div className="relative w-24 sm:w-32 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-indigo-50 overflow-hidden">
+                    {h.imageUrl ? (
+                      <img src={h.imageUrl} alt={h.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Hotel className="h-8 w-8 text-indigo-300" />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">{h.pricePerNight}€<span className="text-xs text-gray-400 font-normal">/nuit</span></p>
-                  <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
-                </div>
-              </a>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400 mt-2">{budget.accommodation.note}</p>
+                  <div className="flex-1 flex items-center gap-3 p-4 min-w-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{h.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-gray-500">{h.type}</span>
+                        {h.rating ? (
+                          <span className="text-xs text-amber-500 flex items-center gap-0.5 font-semibold"><Star className="h-3 w-3 fill-amber-400" />{h.rating}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="text-right whitespace-nowrap">
+                      <p className="font-bold text-gray-900">{h.pricePerNight}€<span className="text-xs text-gray-400 font-normal">/nuit</span></p>
+                      <p className="text-[10px] text-gray-400">total {(h.pricePerNight * duration).toLocaleString()}€ ({duration}n)</p>
+                      <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-3">{budget.accommodation.note}</p>
+          </Card>
         </motion.div>
       )}
 
       {/* Activités */}
       {typeof budget.activities === 'object' && budget.activities.options && budget.activities.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Ticket className="h-5 w-5 text-purple-500" /> Activités incontournables</h4>
-            <a href={budget.activities.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">GetYourGuide <ExternalLink className="h-3 w-3" /></a>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {budget.activities.options.map((a, i) => (
-              <a key={i} href={a.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-3 hover:border-purple-200 hover:shadow-md transition-all group">
-                <div className="p-2 rounded-lg bg-purple-50"><Ticket className="h-4 w-4 text-purple-500" /></div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm truncate">{a.name}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-gray-400">{a.duration}</p>
-                    <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Ticket className="h-5 w-5 text-purple-500" /> Activités incontournables</h4>
+              <a href={budget.activities.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">GetYourGuide <ExternalLink className="h-3 w-3" /></a>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {budget.activities.options.map((a, i) => (
+                <a key={i} href={a.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col bg-white rounded-xl border border-purple-100 overflow-hidden hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/10 transition-all group">
+                  <div className="relative h-32 bg-gradient-to-br from-purple-100 to-purple-50 overflow-hidden">
+                    {a.imageUrl ? (
+                      <img src={a.imageUrl} alt={a.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Ticket className="h-10 w-10 text-purple-300" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
+                      <p className="font-bold text-sm text-gray-900">{a.price}€<span className="text-[10px] text-gray-400 font-normal">/pers</span></p>
+                    </div>
                   </div>
-                </div>
-                <span className="font-bold text-sm text-gray-900 whitespace-nowrap">{a.price}€</span>
-              </a>
-            ))}
-          </div>
+                  <div className="p-3 flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">{a.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-gray-400">{a.duration}</p>
+                        {people > 1 && (
+                          <p className="text-[10px] text-gray-400">· {(a.price * people).toLocaleString()}€ total</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </Card>
         </motion.div>
       )}
     </div>

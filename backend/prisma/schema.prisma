@@ -8,31 +8,93 @@ datasource db {
 }
 
 model User {
-  id          String         @id @default(uuid())
-  email       String         @unique
-  password    String
-  isPremium   Boolean        @default(false)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  simulations Simulation[]
-  subscription Subscription?
+  id             String                   @id @default(uuid())
+  email          String                   @unique
+  password       String
+  isPremium      Boolean                  @default(false)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  simulations    Simulation[]
+  subscription   Subscription?
+  collaborations SimulationCollaborator[]
+  comments       SimulationComment[]
+  invitesCreated SimulationInvite[]       @relation("InviteCreator")
 }
 
 model Simulation {
-  id             String   @id @default(uuid())
-  userId         String
-  destination    String
-  departureCity  String   @default("")
-  startDate      String   @default("")
-  endDate        String   @default("")
-  duration       Int
-  people         Int
-  budget         Float
-  budgetData     String?  @db.Text
-  aiTips         String?  @db.Text
-  itinerary      String?  @db.Text
-  createdAt      DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String                   @id @default(uuid())
+  userId               String
+  destination          String
+  departureCity        String                   @default("")
+  startDate            String                   @default("")
+  endDate              String                   @default("")
+  duration             Int
+  people               Int
+  budget               Float
+  budgetData           String?                  @db.Text
+  aiTips               String?                  @db.Text
+  itinerary            String?                  @db.Text
+  createdAt            DateTime                 @default(now())
+  priceAlertEnabled    Boolean                  @default(false)
+  priceAlertThreshold  Float                    @default(10)
+  lastPriceTotal       Float?
+  lastPriceCheckAt     DateTime?
+  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshots            PriceSnapshot[]
+  collaborators        SimulationCollaborator[]
+  invites              SimulationInvite[]
+  comments             SimulationComment[]
+}
+
+model PriceSnapshot {
+  id           String     @id @default(uuid())
+  simulationId String
+  total        Float
+  flightPrice  Float
+  hotelPrice   Float
+  breakdown    String?    @db.Text
+  checkedAt    DateTime   @default(now())
+  simulation   Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@index([simulationId, checkedAt])
+}
+
+model SimulationCollaborator {
+  id           String     @id @default(uuid())
+  simulationId String
+  userId       String
+  role         String     @default("editor")
+  createdAt    DateTime   @default(now())
+  simulation   Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([simulationId, userId])
+}
+
+model SimulationInvite {
+  id           String     @id @default(uuid())
+  simulationId String
+  token        String     @unique
+  createdBy    String
+  expiresAt    DateTime
+  usedCount    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  simulation   Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  creator      User       @relation("InviteCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+}
+
+model SimulationComment {
+  id            String     @id @default(uuid())
+  simulationId  String
+  userId        String
+  dayIndex      Int?
+  activityIndex Int?
+  text          String     @db.Text
+  createdAt     DateTime   @default(now())
+  simulation    Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([simulationId, createdAt])
 }
 
 model Subscription {

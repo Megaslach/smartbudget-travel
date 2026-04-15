@@ -1,5 +1,10 @@
 import { openai } from '../config/openai';
+import { searchSerpApiFlights, SerpApiFlightOffer } from './serpapiFlightService';
+import { searchSerpApiHotels, SerpApiHotelOffer } from './serpapiHotelService';
+import { searchAmadeusFlights, AmadeusFlightOffer } from './amadeusFlightService';
+import { searchAmadeusHotels, AmadeusHotelOffer } from './amadeusHotelService';
 import { searchRealFlights, RealFlightOffer } from './flightSearchService';
+import { searchKiwiFlights, KiwiFlightOffer } from './kiwiFlightService';
 import { searchRealHotels, RealHotelOffer } from './hotelSearchService';
 
 export interface FlightOption {
@@ -23,6 +28,7 @@ export interface HotelOption {
   totalPrice?: number;
   roomType?: string;
   isRealData?: boolean;
+  imageUrl?: string;
 }
 
 export interface ActivityOption {
@@ -30,6 +36,7 @@ export interface ActivityOption {
   price: number;
   duration: string;
   bookingUrl: string;
+  imageUrl?: string;
 }
 
 export interface FlightEstimate {
@@ -98,6 +105,12 @@ function buildActivityUrl(activityName: string, destination: string): string {
   return `https://www.getyourguide.fr/s/?q=${query}`;
 }
 
+function buildActivityImageUrl(activityName: string, destination: string): string {
+  // Free Unsplash Source: keyword-based, deterministic per activity
+  const keywords = encodeURIComponent(`${activityName},${destination},travel`);
+  return `https://source.unsplash.com/400x300/?${keywords}`;
+}
+
 function buildSearchUrls(input: SimulationInput, originCode?: string, destCode?: string) {
   const { destination, departureCity, startDate, endDate, people } = input;
   const area = input.premiumFilters?.accommodationArea;
@@ -127,13 +140,14 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
   const { destination, departureCity, startDate, endDate, duration, people } = input;
   const pf = input.premiumFilters;
 
-  // ======== 1. REAL FLIGHTS (Amadeus) ========
-  let realFlights: RealFlightOffer[] | null = null;
+  // ======== 1. REAL FLIGHTS (SerpApi → Amadeus → Kiwi → Sky Scrapper → AI) ========
+  let realFlights: Array<SerpApiFlightOffer | AmadeusFlightOffer | KiwiFlightOffer | RealFlightOffer> | null = null;
+  let flightSource: 'serpapi' | 'amadeus' | 'kiwi' | 'skyscanner' | null = null;
   let originCode = '';
   let destCode = '';
 
   try {
-    const flightResult = await searchRealFlights({
+    const serpResult = await searchSerpApiFlights({
       departureCity,
       destination,
       startDate,
@@ -141,20 +155,85 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
       people,
       flightClass: pf?.flightClass,
     });
-    if (flightResult && flightResult.flights.length > 0) {
-      realFlights = flightResult.flights;
-      originCode = flightResult.originCode;
-      destCode = flightResult.destCode;
+    if (serpResult && serpResult.flights.length > 0) {
+      realFlights = serpResult.flights;
+      flightSource = 'serpapi';
+      originCode = serpResult.originCode;
+      destCode = serpResult.destCode;
     }
   } catch (err) {
-    console.error('Real flight search failed:', err);
+    console.error('SerpApi flight search failed:', err);
   }
 
-  // ======== 2. REAL HOTELS (Amadeus) ========
-  let realHotels: RealHotelOffer[] | null = null;
+  if (!realFlights) {
+    try {
+      const amadeusResult = await searchAmadeusFlights({
+        departureCity,
+        destination,
+        startDate,
+        endDate,
+        people,
+        flightClass: pf?.flightClass,
+      });
+      if (amadeusResult && amadeusResult.flights.length > 0) {
+        realFlights = amadeusResult.flights;
+        flightSource = 'amadeus';
+        originCode = amadeusResult.originCode;
+        destCode = amadeusResult.destCode;
+      }
+    } catch (err) {
+      console.error('Amadeus flight search failed:', err);
+    }
+  }
+
+  if (!realFlights) {
+    try {
+      const kiwiResult = await searchKiwiFlights({
+        departureCity,
+        destination,
+        startDate,
+        endDate,
+        people,
+        flightClass: pf?.flightClass,
+      });
+      if (kiwiResult && kiwiResult.flights.length > 0) {
+        realFlights = kiwiResult.flights;
+        flightSource = 'kiwi';
+        originCode = kiwiResult.originCode;
+        destCode = kiwiResult.destCode;
+      }
+    } catch (err) {
+      console.error('Kiwi flight search failed:', err);
+    }
+  }
+
+  if (!realFlights) {
+    try {
+      const flightResult = await searchRealFlights({
+        departureCity,
+        destination,
+        startDate,
+        endDate,
+        people,
+        flightClass: pf?.flightClass,
+      });
+      if (flightResult && flightResult.flights.length > 0) {
+        realFlights = flightResult.flights;
+        flightSource = 'skyscanner';
+        originCode = flightResult.originCode;
+        destCode = flightResult.destCode;
+      }
+    } catch (err) {
+      console.error('Sky Scrapper flight search failed:', err);
+    }
+  }
+
+  // ======== 2. REAL HOTELS (SerpApi → Amadeus → Sky Scrapper → AI) ========
+  let realHotels: Array<SerpApiHotelOffer | AmadeusHotelOffer | RealHotelOffer> | null = null;
+  let hotelSource: 'serpapi' | 'amadeus' | 'skyscanner' | null = null;
 
   try {
-    const hotelResult = await searchRealHotels({
+    const serpHotels = await searchSerpApiHotels({
       destination,
       startDate,
       endDate,
@@ -162,11 +241,50 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
       accommodationType: pf?.accommodationType,
       accommodationArea: pf?.accommodationArea,
     });
-    if (hotelResult && hotelResult.length > 0) {
-      realHotels = hotelResult;
+    if (serpHotels && serpHotels.length > 0) {
+      realHotels = serpHotels;
+      hotelSource = 'serpapi';
     }
   } catch (err) {
-    console.error('Real hotel search failed:', err);
+    console.error('SerpApi hotel search failed:', err);
+  }
+
+  if (!realHotels) {
+    try {
+      const amadeusHotels = await searchAmadeusHotels({
+        destination,
+        startDate,
+        endDate,
+        people,
+        accommodationType: pf?.accommodationType,
+        accommodationArea: pf?.accommodationArea,
+      });
+      if (amadeusHotels && amadeusHotels.length > 0) {
+        realHotels = amadeusHotels;
+        hotelSource = 'amadeus';
+      }
+    } catch (err) {
+      console.error('Amadeus hotel search failed:', err);
+    }
+  }
+
+  if (!realHotels) {
+    try {
+      const hotelResult = await searchRealHotels({
+        destination,
+        startDate,
+        endDate,
+        people,
+        accommodationType: pf?.accommodationType,
+        accommodationArea: pf?.accommodationArea,
+      });
+      if (hotelResult && hotelResult.length > 0) {
+        realHotels = hotelResult;
+        hotelSource = 'skyscanner';
+      }
+    } catch (err) {
+      console.error('Sky Scrapper hotel search failed:', err);
+    }
   }
 
   const urls = buildSearchUrls(input, originCode, destCode);
@@ -177,12 +295,15 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
   // ======== 4. BUILD FINAL RESULT ========
   let flights: FlightEstimate;
   if (realFlights && realFlights.length > 0) {
-    const avgPrice = Math.round(realFlights.reduce((s, f) => s + f.price, 0) / realFlights.length);
+    const sourceLabel = flightSource === 'serpapi' ? 'Google Flights — Prix réels'
+      : flightSource === 'amadeus' ? 'Amadeus — Prix réels'
+      : flightSource === 'kiwi' ? 'Kiwi.com — Prix réels'
+      : 'Skyscanner — Prix réels';
     flights = {
       avgPrice: Math.round(realFlights[0].price),
-      source: 'Skyscanner — Prix réels',
+      source: sourceLabel,
       note: `${realFlights.length} vols trouvés pour ${startDate}. Prix par personne A/R.`,
-      searchUrl: urls.skyscanner,
+      searchUrl: (flightSource === 'kiwi' || flightSource === 'serpapi') ? (realFlights[0].bookingUrl || urls.skyscanner) : urls.skyscanner,
       isRealData: true,
       options: realFlights.slice(0, 5).map((f) => ({
         airline: `${f.airlineName}`,
@@ -206,10 +327,13 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
   if (realHotels && realHotels.length > 0) {
     const avgPerNight = Math.round(realHotels.reduce((s, h) => s + h.pricePerNight, 0) / realHotels.length);
     const total = avgPerNight * duration;
+    const hotelSourceLabel = hotelSource === 'serpapi' ? 'Google Hotels — Prix réels'
+      : hotelSource === 'amadeus' ? 'Amadeus — Prix réels'
+      : 'Skyscanner — Prix réels';
     accommodation = {
       avgPerNight,
       total,
-      source: 'Skyscanner — Prix réels',
+      source: hotelSourceLabel,
       note: `${realHotels.length} hébergements trouvés. Prix par nuit.`,
       searchUrl: urls.booking,
       isRealData: true,
@@ -222,6 +346,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
         totalPrice: h.totalPrice,
         roomType: h.roomType,
         isRealData: true,
+        imageUrl: (h as any).thumbnail || undefined,
       })),
     };
   } else {
@@ -240,9 +365,16 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
   const confidence = flights.isRealData && accommodation.isRealData ? 'high'
     : hasReal ? 'medium' : 'low';
 
+  const flightSrcName = flightSource === 'serpapi' ? 'Google Flights'
+    : flightSource === 'amadeus' ? 'Amadeus'
+    : flightSource === 'kiwi' ? 'Kiwi.com'
+    : 'Skyscanner';
+  const hotelSrcName = hotelSource === 'serpapi' ? 'Google Hotels'
+    : hotelSource === 'amadeus' ? 'Amadeus'
+    : 'Skyscanner';
   const dataSources: string[] = [];
-  if (flights.isRealData) dataSources.push('vols réels (Skyscanner)');
-  if (accommodation.isRealData) dataSources.push('hôtels réels (Skyscanner)');
+  if (flights.isRealData) dataSources.push(`vols réels (${flightSrcName})`);
+  if (accommodation.isRealData) dataSources.push(`hôtels réels (${hotelSrcName})`);
   if (!flights.isRealData || !accommodation.isRealData) dataSources.push('estimation IA');
 
   return {
@@ -315,7 +447,7 @@ Retourne UNIQUEMENT ce JSON :
 
     const flightsAi: FlightEstimate = parsed.flights ? {
       avgPrice: parsed.flights.avgPrice || 300,
-      source: 'Estimation IA (configurez RapidAPI pour les prix réels)',
+      source: 'Prix indicatif (IA) — configurez SERPAPI_KEY pour les prix réels',
       note: parsed.flights.note || '',
       searchUrl: urls.skyscanner,
       isRealData: false,
@@ -329,7 +461,7 @@ Retourne UNIQUEMENT ce JSON :
     const accomAi: AccommodationEstimate = parsed.accommodation ? {
       avgPerNight: parsed.accommodation.avgPerNight || 80,
       total: parsed.accommodation.total || 80 * duration,
-      source: 'Estimation IA (configurez RapidAPI pour les prix réels)',
+      source: 'Prix indicatif (IA) — configurez SERPAPI_KEY pour les prix réels',
       note: parsed.accommodation.note || '',
       searchUrl: urls.booking,
       isRealData: false,
@@ -349,6 +481,7 @@ Retourne UNIQUEMENT ce JSON :
         price: a.price,
         duration: a.duration,
         bookingUrl: buildActivityUrl(a.name, destination),
+        imageUrl: buildActivityImageUrl(a.name, destination),
       })),
     };
 
@@ -368,7 +501,7 @@ Retourne UNIQUEMENT ce JSON :
       food: 40 * duration * people,
       transport: 15 * duration * people,
       activities: { total: 25 * duration * people, perDayPerPerson: 25, searchUrl: urls.getyourguide, options: [] },
-      summary: 'Estimation par défaut. Configurez RAPIDAPI_KEY pour les prix réels.',
+      summary: 'Prix indicatifs générés par IA. Configurez SERPAPI_KEY pour obtenir les vrais prix Google Flights + Google Hotels.',
     };
   }
 }

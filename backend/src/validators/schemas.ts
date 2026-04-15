@@ -30,3 +30,26 @@ export const simulationSchema = z.object({
 export const generateTripSchema = z.object({
   simulationId: z.string().uuid('ID de simulation invalide'),
 });
+
+export const compareSchema = z.object({
+  destinations: z.array(z.string().min(2)).min(2, 'Au moins 2 destinations').max(4, 'Maximum 4 destinations'),
+  departureCity: z.string().min(2, 'Ville de départ requise'),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  people: z.number().int().min(1).max(20),
+});
+
+export const priceAlertSchema = z.object({
+  enabled: z.boolean(),
+  threshold: z.number().min(1).max(50).optional(),
+});
+
+export const inviteAcceptSchema = z.object({
+  token: z.string().min(10),
+});
+
+export const commentSchema = z.object({
+  text: z.string().min(1).max(2000),
+  dayIndex: z.number().int().min(0).optional(),
+  activityIndex: z.number().int().min(0).optional(),
+});

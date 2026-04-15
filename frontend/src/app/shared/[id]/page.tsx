@@ -13,6 +13,7 @@ import Loader from '@/components/atoms/Loader';
 import Button from '@/components/atoms/Button';
 import BudgetResultCard from '@/components/molecules/BudgetResultCard';
 import AiTipsCard from '@/components/molecules/AiTipsCard';
+import ItineraryCard from '@/components/molecules/ItineraryCard';
 import toast from 'react-hot-toast';
 
 type SharedSim = Simulation & { sharedBy: string };
@@ -125,6 +126,13 @@ export default function SharedSimulationPage() {
         {sim.aiTips && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mb-6">
             <AiTipsCard tips={sim.aiTips} />
+          </motion.div>
+        )}
+
+        {/* Day-by-day itinerary */}
+        {sim.itinerary && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mb-6">
+            <ItineraryCard itinerary={sim.itinerary} />
           </motion.div>
         )}
 

@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/atoms/Button';
 import Badge from '@/components/atoms/Badge';
-import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle } from 'lucide-react';
+import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle, Scale } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -14,9 +15,13 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="p-2 rounded-xl bg-primary-700 text-white group-hover:bg-primary-800 transition-colors">
+            <motion.div
+              whileHover={{ rotate: [0, -8, 6, -4, 0], scale: 1.05 }}
+              transition={{ duration: 0.6 }}
+              className="p-2 rounded-xl bg-primary-700 text-white group-hover:bg-primary-800 transition-colors"
+            >
               <Palmtree className="h-5 w-5" />
-            </div>
+            </motion.div>
             <span className="text-xl font-bold text-gray-900 tracking-tight">
               Smart<span className="text-primary-700">Budget</span>
             </span>
@@ -36,6 +41,12 @@ export default function Navbar() {
                   <Button variant="ghost" size="sm">
                     <UserCircle className="h-4 w-4" />
                     Profil
+                  </Button>
+                </Link>
+                <Link href="/compare">
+                  <Button variant="ghost" size="sm">
+                    <Scale className="h-4 w-4" />
+                    Comparer
                   </Button>
                 </Link>
                 <Link href="/simulation">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import SimulationForm from '@/components/organisms/SimulationForm';
 import ResultsSection from '@/components/organisms/ResultsSection';
+import SimulationLoadingOverlay from '@/components/molecules/SimulationLoadingOverlay';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { BudgetEstimate, AiTipsResult } from '@/types';
@@ -58,6 +59,7 @@ export default function SimulationPage() {
 
   return (
     <DashboardLayout title="Simulation de budget" description="Estimez le coût de votre prochain voyage">
+      <SimulationLoadingOverlay open={isSimulating} />
       <div className="max-w-2xl mx-auto space-y-10">
         <SimulationForm onSubmit={handleSimulate} isLoading={isSimulating} />
         {result && (

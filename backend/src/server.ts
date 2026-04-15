@@ -8,6 +8,7 @@ import tripRoutes from './routes/tripRoutes';
 import stripeRoutes from './routes/stripeRoutes';
 import destinationRoutes from './routes/destinationRoutes';
 import { handleWebhook } from './controllers/stripeController';
+import { startPriceAlertCron } from './services/priceAlertJob';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.get('*', (_req, res) => {
 
 app.listen(env.PORT, () => {
   console.log(`🚀 Server running on http://localhost:${env.PORT}`);
+  startPriceAlertCron();
 });
 
 export default app;

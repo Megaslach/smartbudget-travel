@@ -2,7 +2,7 @@ import { Response } from 'express';
 import prisma from '../config/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { generateTripSchema } from '../validators/schemas';
-import { generateItinerary } from '../services/aiService';
+import { generateItinerary } from '../services/itineraryService';
 
 export const generateTrip = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -23,12 +23,18 @@ export const generateTrip = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    const itinerary = await generateItinerary(
-      simulation.destination,
-      simulation.duration,
-      simulation.people,
-      simulation.budget
-    );
+    const itinerary = await generateItinerary({
+      destination: simulation.destination,
+      startDate: simulation.startDate,
+      endDate: simulation.endDate,
+      duration: simulation.duration,
+      people: simulation.people,
+    });
+
+    if (!itinerary) {
+      res.status(502).json({ error: 'Itinéraire indisponible, réessayez dans un instant' });
+      return;
+    }
 
     await prisma.simulation.update({
       where: { id: simulationId },

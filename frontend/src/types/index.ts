@@ -26,6 +26,7 @@ export interface HotelOption {
   totalPrice?: number;
   roomType?: string;
   isRealData?: boolean;
+  imageUrl?: string;
 }
 
 export interface ActivityOption {
@@ -33,6 +34,7 @@ export interface ActivityOption {
   price: number;
   duration: string;
   bookingUrl: string;
+  imageUrl?: string;
 }
 
 export interface FlightEstimate {
@@ -98,6 +100,29 @@ export interface FlexibleDate {
   label: string;
 }
 
+export interface FlexibleDateScanResult {
+  offsetDays: number;
+  startDate: string;
+  endDate: string;
+  label: string;
+  pricePerPerson: number;
+  pricePerGroup: number;
+  savingPerPerson: number;
+  savingPerGroup: number;
+  savingPercent: number;
+  source: 'serpapi' | 'amadeus' | 'kiwi';
+}
+
+export interface FlexibleDatesScanResponse {
+  basePricePerPerson: number;
+  basePriceGroup: number;
+  people: number;
+  originalStart: string;
+  originalEnd: string;
+  results: FlexibleDateScanResult[];
+  scannedAt: string;
+}
+
 export interface AiTipsResult {
   tips: SmartTip[];
   flexibleDates?: FlexibleDate[];
@@ -126,22 +151,102 @@ export interface Simulation {
   budget: number | BudgetEstimate;
   budgetData?: BudgetEstimate;
   aiTips?: AiTipsResult;
-  itinerary?: string;
+  itinerary?: Itinerary | null;
   createdAt: string;
+  role?: 'owner' | 'editor';
+  sharedBy?: string | null;
+  priceAlertEnabled?: boolean;
+  priceAlertThreshold?: number;
+  lastPriceTotal?: number | null;
+  lastPriceCheckAt?: string | null;
 }
 
+export interface CompareResult {
+  destination: string;
+  budget: BudgetEstimate | null;
+  error: string | null;
+}
+
+export interface CompareResponse {
+  results: CompareResult[];
+  duration: number;
+  people: number;
+  departureCity: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface Collaborator {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  joinedAt: string;
+}
+
+export interface CollaboratorsResponse {
+  owner: { id: string; email: string; name: string };
+  collaborators: Collaborator[];
+}
+
+export interface Comment {
+  id: string;
+  text: string;
+  dayIndex: number | null;
+  activityIndex: number | null;
+  createdAt: string;
+  author: { id: string; name: string; email: string };
+}
+
+export interface InviteInfo {
+  simulation: { id: string; destination: string; startDate: string; endDate: string; people: number };
+  invitedBy: string;
+  expiresAt: string;
+}
+
+export interface PriceAlertConfig {
+  priceAlertEnabled: boolean;
+  priceAlertThreshold: number;
+  lastPriceTotal: number | null;
+  lastPriceCheckAt: string | null;
+}
+
+export interface PricePoint {
+  total: number;
+  flightPrice?: number;
+  hotelPrice?: number;
+  checkedAt: string;
+  initial?: boolean;
+}
+
+export type ItineraryTimeSlot = 'morning' | 'afternoon' | 'evening';
+export type ItineraryCategory = 'sight' | 'food' | 'activity' | 'transport' | 'nature' | 'shopping' | 'nightlife';
+
 export interface ItineraryActivity {
-  time: string;
-  activity: string;
-  location: string;
-  estimatedCost: number;
+  time: ItineraryTimeSlot;
+  title: string;
   description: string;
+  location: string;
+  lat: number;
+  lng: number;
+  duration: string;
+  estimatedCost?: number;
+  category?: ItineraryCategory;
+  bookingUrl?: string;
 }
 
 export interface ItineraryDay {
   day: number;
+  date: string;
   title: string;
+  summary: string;
   activities: ItineraryActivity[];
+}
+
+export interface Itinerary {
+  destination: string;
+  days: ItineraryDay[];
+  generatedAt: string;
 }
 
 export interface AuthResponse {
@@ -171,7 +276,7 @@ export interface PriceCheckResponse {
 }
 
 export interface TripResponse {
-  itinerary: ItineraryDay[];
+  itinerary: Itinerary;
   simulation: {
     id: string;
     destination: string;

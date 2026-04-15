@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth';
 import { simulationSchema } from '../validators/schemas';
 import { estimateBudget } from '../services/budgetService';
 import { generateSmartTips } from '../services/aiTipsService';
+import { generateItinerary } from '../services/itineraryService';
 
 export const simulate = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -18,10 +19,20 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
     const end = new Date(endDate);
     const duration = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
 
-    const budgetEstimate = await estimateBudget({ destination, departureCity, startDate, endDate, duration, people, premiumFilters });
-
-    // Generate AI Smart Tips (premium feature, but basic tips for all)
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
+
+    const [budgetEstimate, itinerary] = await Promise.all([
+      estimateBudget({ destination, departureCity, startDate, endDate, duration, people, premiumFilters }),
+      generateItinerary({
+        destination,
+        startDate,
+        endDate,
+        duration,
+        people,
+        interests: premiumFilters?.interests,
+      }),
+    ]);
+
     const aiTips = await generateSmartTips({
       destination, departureCity, startDate, endDate, duration, people,
       budget: budgetEstimate,
@@ -40,6 +51,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
         budget: budgetEstimate.total,
         budgetData: JSON.stringify(budgetEstimate),
         aiTips: JSON.stringify(aiTips),
+        itinerary: itinerary ? JSON.stringify(itinerary) : null,
       },
     });
 
@@ -54,6 +66,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
         people: simulation.people,
         budget: budgetEstimate,
         aiTips,
+        itinerary,
         createdAt: simulation.createdAt,
       },
     });
@@ -65,28 +78,45 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
 
 export const getUserSimulations = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const simulations = await prisma.simulation.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        destination: true,
-        departureCity: true,
-        startDate: true,
-        endDate: true,
-        duration: true,
-        people: true,
-        budget: true,
-        createdAt: true,
-        itinerary: true,
-        aiTips: true,
-      },
-    });
+    const [owned, shared] = await Promise.all([
+      prisma.simulation.findMany({
+        where: { userId: req.userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, destination: true, departureCity: true, startDate: true, endDate: true,
+          duration: true, people: true, budget: true, createdAt: true, itinerary: true, aiTips: true,
+          priceAlertEnabled: true,
+        },
+      }),
+      prisma.simulationCollaborator.findMany({
+        where: { userId: req.userId },
+        include: {
+          simulation: {
+            select: {
+              id: true, destination: true, departureCity: true, startDate: true, endDate: true,
+              duration: true, people: true, budget: true, createdAt: true, itinerary: true, aiTips: true,
+              user: { select: { email: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
-    const formatted = simulations.map(s => ({
-      ...s,
-      aiTips: s.aiTips ? JSON.parse(s.aiTips) : null,
-    }));
+    const formatted = [
+      ...owned.map((s) => ({
+        ...s,
+        aiTips: s.aiTips ? JSON.parse(s.aiTips) : null,
+        role: 'owner' as const,
+        sharedBy: null,
+      })),
+      ...shared.map((c) => ({
+        ...c.simulation,
+        aiTips: c.simulation.aiTips ? JSON.parse(c.simulation.aiTips) : null,
+        role: 'editor' as const,
+        sharedBy: c.simulation.user.email.split('@')[0],
+        user: undefined,
+      })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({ simulations: formatted });
   } catch (error) {
@@ -98,8 +128,9 @@ export const getUserSimulations = async (req: AuthRequest, res: Response): Promi
 export const getSimulationDetail = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const simulation = await prisma.simulation.findFirst({
-      where: { id, userId: req.userId },
+    const simulation = await prisma.simulation.findUnique({
+      where: { id },
+      include: { collaborators: { select: { userId: true } } },
     });
 
     if (!simulation) {
@@ -107,12 +138,23 @@ export const getSimulationDetail = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    const isOwner = simulation.userId === req.userId;
+    const isCollab = simulation.collaborators.some((c) => c.userId === req.userId);
+    if (!isOwner && !isCollab) {
+      res.status(404).json({ error: 'Simulation non trouvée' });
+      return;
+    }
+
+    const { collaborators, ...simData } = simulation;
+    void collaborators;
+
     res.json({
       simulation: {
-        ...simulation,
+        ...simData,
         budgetData: simulation.budgetData ? JSON.parse(simulation.budgetData) : null,
         aiTips: simulation.aiTips ? JSON.parse(simulation.aiTips) : null,
         itinerary: simulation.itinerary ? JSON.parse(simulation.itinerary) : null,
+        role: isOwner ? 'owner' : 'editor',
       },
     });
   } catch (error) {
@@ -156,6 +198,22 @@ export const getSharedSimulation = async (req: AuthRequest, res: Response): Prom
   } catch (error) {
     console.error('GetSharedSimulation error:', error);
     res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+export const deleteSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const sim = await prisma.simulation.findFirst({ where: { id, userId: req.userId } });
+    if (!sim) {
+      res.status(404).json({ error: 'Simulation non trouvée' });
+      return;
+    }
+    await prisma.simulation.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('DeleteSimulation error:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
   }
 };
 
