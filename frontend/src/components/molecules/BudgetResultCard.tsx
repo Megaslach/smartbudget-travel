@@ -165,7 +165,10 @@ export default function BudgetResultCard({ budget, destination, duration, people
                 <div className="p-2 rounded-lg bg-purple-50"><Ticket className="h-4 w-4 text-purple-500" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{a.name}</p>
-                  <p className="text-xs text-gray-400">{a.duration}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-gray-400">{a.duration}</p>
+                    <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+                  </div>
                 </div>
                 <span className="font-bold text-sm text-gray-900 whitespace-nowrap">{a.price}€</span>
               </a>

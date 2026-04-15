@@ -91,6 +91,13 @@ export interface SimulationInput {
   premiumFilters?: PremiumFilters;
 }
 
+function buildActivityUrl(activityName: string, destination: string): string {
+  // Deep search per activity: GetYourGuide query combining name + destination
+  // This lands on a pre-filled search page with the specific activity
+  const query = encodeURIComponent(`${activityName} ${destination}`);
+  return `https://www.getyourguide.fr/s/?q=${query}`;
+}
+
 function buildSearchUrls(input: SimulationInput, originCode?: string, destCode?: string) {
   const { destination, departureCity, startDate, endDate, people } = input;
   const area = input.premiumFilters?.accommodationArea;
@@ -338,8 +345,10 @@ Retourne UNIQUEMENT ce JSON :
       perDayPerPerson: parsed.activities?.perDayPerPerson || 25,
       searchUrl: urls.getyourguide,
       options: (parsed.activities?.options || []).map((a: any) => ({
-        ...a,
-        bookingUrl: urls.getyourguide,
+        name: a.name,
+        price: a.price,
+        duration: a.duration,
+        bookingUrl: buildActivityUrl(a.name, destination),
       })),
     };
 

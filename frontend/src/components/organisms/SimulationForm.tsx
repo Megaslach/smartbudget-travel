@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, PlaneTakeoff, Calendar, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown } from 'lucide-react';
+import { MapPin, PlaneTakeoff, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown } from 'lucide-react';
 import Button from '@/components/atoms/Button';
+import DateRangePicker from '@/components/molecules/DateRangePicker';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { PremiumFilters } from '@/types';
@@ -100,8 +101,6 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
     useCallback(async (q: string) => (await api.searchDestinations(q)).destinations, []),
   );
 
-  const today = new Date().toISOString().split('T')[0];
-
   const validate = () => {
     const e: Record<string, string> = {};
     if (!destination.trim()) e.destination = 'Destination requise';
@@ -133,8 +132,6 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
 
     await onSubmit({ destination: destination.trim(), departureCity: departureCity.trim(), startDate, endDate, people: parseInt(people), premiumFilters });
   };
-
-  const duration = startDate && endDate ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
   return (
     <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 p-8 space-y-6">
@@ -233,36 +230,20 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
         </div>
       </div>
 
-      {/* Dates */}
+      {/* Dates picker + travelers */}
       <div className="grid md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5"><Calendar className="inline h-4 w-4 mr-1 text-gray-400" />Départ</label>
-          <input type="date" min={today} value={startDate} onChange={(e) => { setStartDate(e.target.value); if (endDate && new Date(e.target.value) >= new Date(endDate)) setEndDate(''); }}
-            className={`w-full px-4 py-3 rounded-xl border ${errors.startDate ? 'border-red-400' : 'border-gray-200'} focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50`} />
-          {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5"><Calendar className="inline h-4 w-4 mr-1 text-gray-400" />Retour</label>
-          <input type="date" min={startDate || today} value={endDate} onChange={(e) => setEndDate(e.target.value)}
-            className={`w-full px-4 py-3 rounded-xl border ${errors.endDate ? 'border-red-400' : 'border-gray-200'} focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50`} />
-          {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
-        </div>
-      </div>
-
-      {/* Voyageurs + durée */}
-      <div className="grid md:grid-cols-2 gap-4 items-end">
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
+          error={errors.startDate || errors.endDate}
+        />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5"><Users className="inline h-4 w-4 mr-1 text-gray-400" />Voyageurs</label>
           <input type="number" min="1" max="20" placeholder="2" value={people} onChange={(e) => setPeople(e.target.value)}
             className={`w-full px-4 py-3 rounded-xl border ${errors.people ? 'border-red-400' : 'border-gray-200'} focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50`} />
           {errors.people && <p className="text-red-500 text-xs mt-1">{errors.people}</p>}
         </div>
-        {duration > 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary-50 border border-primary-100 text-primary-800">
-            <Calendar className="h-4 w-4" />
-            <span className="text-sm font-medium">{duration} nuit{duration > 1 ? 's' : ''}</span>
-          </motion.div>
-        )}
       </div>
 
       {/* Premium Filters Section */}

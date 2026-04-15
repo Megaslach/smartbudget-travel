@@ -94,3 +94,66 @@ export const getMe = async (req: Request & { userId?: string }, res: Response): 
     res.status(500).json({ error: 'Erreur serveur' });
   }
 };
+
+export const updateProfile = async (req: Request & { userId?: string }, res: Response): Promise<void> => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+
+    if (!user) {
+      res.status(404).json({ error: 'Utilisateur non trouvé' });
+      return;
+    }
+
+    const updates: any = {};
+
+    if (email && email !== user.email) {
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        res.status(409).json({ error: 'Cet email est déjà utilisé' });
+        return;
+      }
+      updates.email = email;
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        res.status(400).json({ error: 'Mot de passe actuel requis' });
+        return;
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+        return;
+      }
+      updates.password = await bcrypt.hash(newPassword, 12);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.json({ user: { id: user.id, email: user.email, isPremium: user.isPremium, createdAt: user.createdAt } });
+      return;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data: updates,
+      select: { id: true, email: true, isPremium: true, createdAt: true },
+    });
+
+    res.json({ user: updated });
+  } catch (error) {
+    console.error('UpdateProfile error:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+
+};
+
+export const deleteAccount = async (req: Request & { userId?: string }, res: Response): Promise<void> => {
+  try {
+    await prisma.user.delete({ where: { id: req.userId } });
+    res.json({ message: 'Compte supprimé' });
+  } catch (error) {
+    console.error('DeleteAccount error:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+};

@@ -121,6 +121,44 @@ export const getSimulationDetail = async (req: AuthRequest, res: Response): Prom
   }
 };
 
+export const getSharedSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const simulation = await prisma.simulation.findUnique({
+      where: { id },
+      include: { user: { select: { email: true } } },
+    });
+
+    if (!simulation) {
+      res.status(404).json({ error: 'Simulation non trouvée' });
+      return;
+    }
+
+    const sharedBy = simulation.user?.email ? simulation.user.email.split('@')[0] : 'Anonyme';
+
+    res.json({
+      simulation: {
+        id: simulation.id,
+        destination: simulation.destination,
+        departureCity: simulation.departureCity,
+        startDate: simulation.startDate,
+        endDate: simulation.endDate,
+        duration: simulation.duration,
+        people: simulation.people,
+        budget: simulation.budget,
+        budgetData: simulation.budgetData ? JSON.parse(simulation.budgetData) : null,
+        aiTips: simulation.aiTips ? JSON.parse(simulation.aiTips) : null,
+        itinerary: simulation.itinerary ? JSON.parse(simulation.itinerary) : null,
+        createdAt: simulation.createdAt,
+        sharedBy,
+      },
+    });
+  } catch (error) {
+    console.error('GetSharedSimulation error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
 export const priceCheck = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

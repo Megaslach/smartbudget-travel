@@ -52,6 +52,19 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
+  async updateProfile(data: { email?: string; currentPassword?: string; newPassword?: string }): Promise<{ user: AuthResponse['user'] }> {
+    return this.request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAccount(): Promise<{ message: string }> {
+    return this.request('/auth/account', {
+      method: 'DELETE',
+    });
+  }
+
   // Destinations & Airports
   async searchDestinations(query: string): Promise<{ destinations: { name: string; country: string; countryCode: string; emoji: string; airports: { code: string; name: string }[]; image: string; imageQuery: string; matchType: string; popular: boolean }[] }> {
     return this.request(`/destinations/search?q=${encodeURIComponent(query)}`);
@@ -87,6 +100,10 @@ class ApiClient {
 
   async priceCheck(id: string): Promise<PriceCheckResponse> {
     return this.request(`/simulation/${id}/price-check`);
+  }
+
+  async getSharedSimulation(id: string): Promise<{ simulation: Simulation & { sharedBy: string } }> {
+    return this.request(`/shared/${id}`);
   }
 
   // Stripe
