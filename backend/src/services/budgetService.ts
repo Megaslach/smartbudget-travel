@@ -173,7 +173,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
     const avgPrice = Math.round(realFlights.reduce((s, f) => s + f.price, 0) / realFlights.length);
     flights = {
       avgPrice: Math.round(realFlights[0].price),
-      source: 'Amadeus — Prix réels en temps réel',
+      source: 'Skyscanner — Prix réels',
       note: `${realFlights.length} vols trouvés pour ${startDate}. Prix par personne A/R.`,
       searchUrl: urls.skyscanner,
       isRealData: true,
@@ -202,7 +202,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
     accommodation = {
       avgPerNight,
       total,
-      source: 'Amadeus — Prix réels en temps réel',
+      source: 'Skyscanner — Prix réels',
       note: `${realHotels.length} hébergements trouvés. Prix par nuit.`,
       searchUrl: urls.booking,
       isRealData: true,
@@ -234,8 +234,8 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
     : hasReal ? 'medium' : 'low';
 
   const dataSources: string[] = [];
-  if (flights.isRealData) dataSources.push('vols réels (Amadeus)');
-  if (accommodation.isRealData) dataSources.push('hôtels réels (Amadeus)');
+  if (flights.isRealData) dataSources.push('vols réels (Skyscanner)');
+  if (accommodation.isRealData) dataSources.push('hôtels réels (Skyscanner)');
   if (!flights.isRealData || !accommodation.isRealData) dataSources.push('estimation IA');
 
   return {
@@ -308,7 +308,7 @@ Retourne UNIQUEMENT ce JSON :
 
     const flightsAi: FlightEstimate = parsed.flights ? {
       avgPrice: parsed.flights.avgPrice || 300,
-      source: 'Estimation IA (Amadeus non configuré)',
+      source: 'Estimation IA (configurez RapidAPI pour les prix réels)',
       note: parsed.flights.note || '',
       searchUrl: urls.skyscanner,
       isRealData: false,
@@ -322,7 +322,7 @@ Retourne UNIQUEMENT ce JSON :
     const accomAi: AccommodationEstimate = parsed.accommodation ? {
       avgPerNight: parsed.accommodation.avgPerNight || 80,
       total: parsed.accommodation.total || 80 * duration,
-      source: 'Estimation IA (Amadeus non configuré)',
+      source: 'Estimation IA (configurez RapidAPI pour les prix réels)',
       note: parsed.accommodation.note || '',
       searchUrl: urls.booking,
       isRealData: false,
@@ -359,7 +359,7 @@ Retourne UNIQUEMENT ce JSON :
       food: 40 * duration * people,
       transport: 15 * duration * people,
       activities: { total: 25 * duration * people, perDayPerPerson: 25, searchUrl: urls.getyourguide, options: [] },
-      summary: 'Estimation par défaut. Configurez Amadeus pour les prix réels.',
+      summary: 'Estimation par défaut. Configurez RAPIDAPI_KEY pour les prix réels.',
     };
   }
 }

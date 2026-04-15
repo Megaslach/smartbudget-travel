@@ -1,4 +1,4 @@
-import { getAmadeus } from '../config/amadeus';
+import { env } from '../config/env';
 import { cities } from '../data/airports';
 
 export interface RealFlightOffer {
@@ -14,26 +14,16 @@ export interface RealFlightOffer {
   stops: number;
   cabinClass: string;
   bookingUrl: string;
-  source: 'amadeus';
+  source: 'skyscanner';
 }
 
-const AIRLINE_NAMES: Record<string, string> = {
-  AF: 'Air France', LH: 'Lufthansa', BA: 'British Airways', KL: 'KLM',
-  FR: 'Ryanair', U2: 'easyJet', W6: 'Wizz Air', VY: 'Vueling',
-  IB: 'Iberia', AZ: 'ITA Airways', SK: 'SAS', AY: 'Finnair',
-  LX: 'Swiss', OS: 'Austrian', SN: 'Brussels Airlines', TP: 'TAP Portugal',
-  EK: 'Emirates', QR: 'Qatar Airways', TK: 'Turkish Airlines', EY: 'Etihad',
-  SQ: 'Singapore Airlines', CX: 'Cathay Pacific', NH: 'ANA', JL: 'Japan Airlines',
-  DL: 'Delta', AA: 'American Airlines', UA: 'United', AC: 'Air Canada',
-  AT: 'Royal Air Maroc', RAM: 'Royal Air Maroc', TO: 'Transavia', HV: 'Transavia',
-  QS: 'SmartWings', PC: 'Pegasus', 'W4': 'Wizz Air Malta', 'A3': 'Aegean',
-};
+// ---- Helpers ----
 
 function resolveIataCode(cityInput: string): string | null {
-  const cleaned = cityInput.replace(/\s*\([A-Z]{3}\)\s*$/, '').trim();
   const codeMatch = cityInput.match(/\(([A-Z]{3})\)/);
   if (codeMatch) return codeMatch[1];
 
+  const cleaned = cityInput.replace(/\s*\([A-Z]{3}\)\s*$/, '').trim();
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const q = norm(cleaned);
   const city = cities.find(c => norm(c.name) === q);
@@ -41,22 +31,56 @@ function resolveIataCode(cityInput: string): string | null {
   return null;
 }
 
-function buildSkyscannerDeepLink(
-  originCode: string, destCode: string,
-  departDate: string, returnDate: string,
-  adults: number, cabinClass: string
-): string {
-  const formatDate = (d: string) => d.replace(/-/g, '').slice(2);
-  const cabin = cabinClass === 'BUSINESS' ? 'business' : cabinClass === 'FIRST' ? 'first' : 'economy';
-  return `https://www.skyscanner.fr/transport/vols/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${formatDate(departDate)}/${formatDate(returnDate)}/?adultes=${adults}&cabineclass=${cabin}`;
+function buildSkyscannerLink(originCode: string, destCode: string, departDate: string, returnDate: string, adults: number, cabin: string): string {
+  const fmt = (d: string) => d.replace(/-/g, '').slice(2);
+  return `https://www.skyscanner.fr/transport/vols/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${fmt(departDate)}/${fmt(returnDate)}/?adultes=${adults}&cabineclass=${cabin}`;
 }
 
-function formatDuration(isoDuration: string): string {
-  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-  if (!match) return isoDuration;
-  const h = match[1] || '0';
-  const m = match[2] || '0';
-  return `${h}h${m.padStart(2, '0')}`;
+async function rapidApiFetch(url: string): Promise<any> {
+  const res = await fetch(url, {
+    headers: {
+      'X-RapidAPI-Key': env.RAPIDAPI_KEY,
+      'X-RapidAPI-Host': 'sky-scrapper.p.rapidapi.com',
+    },
+  });
+  if (!res.ok) throw new Error(`RapidAPI ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+// ---- Step 1: resolve city → skyId + entityId via Sky Scrapper ----
+
+interface SkyEntity {
+  skyId: string;
+  entityId: string;
+  name: string;
+}
+
+async function resolveSkyScannerEntity(query: string): Promise<SkyEntity | null> {
+  try {
+    const data = await rapidApiFetch(
+      `https://sky-scrapper.p.rapidapi.com/api/v1/flights/searchAirport?query=${encodeURIComponent(query)}&locale=fr-FR`
+    );
+    const results = data?.data;
+    if (!results || results.length === 0) return null;
+
+    const best = results[0];
+    return {
+      skyId: best.skyId,
+      entityId: best.entityId,
+      name: best.presentation?.title || query,
+    };
+  } catch (err) {
+    console.error('Sky Scrapper airport search error:', err);
+    return null;
+  }
+}
+
+// ---- Step 2: search flights ----
+
+function formatMinutes(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}h${m.toString().padStart(2, '0')}`;
 }
 
 export async function searchRealFlights(params: {
@@ -67,70 +91,93 @@ export async function searchRealFlights(params: {
   people: number;
   flightClass?: string;
 }): Promise<{ flights: RealFlightOffer[]; originCode: string; destCode: string } | null> {
-  const amadeus = getAmadeus();
-  if (!amadeus) return null;
+  if (!env.RAPIDAPI_KEY) return null;
 
-  const originCode = resolveIataCode(params.departureCity);
-  const destCode = resolveIataCode(params.destination);
+  // Resolve IATA codes from local DB
+  const originIata = resolveIataCode(params.departureCity);
+  const destIata = resolveIataCode(params.destination);
 
-  if (!originCode || !destCode) {
-    console.log(`Could not resolve IATA: ${params.departureCity} → ${originCode}, ${params.destination} → ${destCode}`);
+  // Resolve Sky Scrapper entities (skyId + entityId needed for search)
+  const originQuery = originIata || params.departureCity;
+  const destQuery = destIata || params.destination;
+
+  console.log(`Sky Scrapper: resolving "${originQuery}" and "${destQuery}"...`);
+
+  const [originEntity, destEntity] = await Promise.all([
+    resolveSkyScannerEntity(originQuery),
+    resolveSkyScannerEntity(destQuery),
+  ]);
+
+  if (!originEntity || !destEntity) {
+    console.log(`Could not resolve entities: origin=${originEntity?.skyId}, dest=${destEntity?.skyId}`);
     return null;
   }
 
-  const travelClass = params.flightClass === 'business' ? 'BUSINESS'
-    : params.flightClass === 'first' ? 'FIRST'
-    : params.flightClass === 'premium_economy' ? 'PREMIUM_ECONOMY'
-    : 'ECONOMY';
+  const cabinClass = params.flightClass === 'business' ? 'business'
+    : params.flightClass === 'first' ? 'first'
+    : params.flightClass === 'premium_economy' ? 'premium_economy'
+    : 'economy';
+
+  const originCode = originIata || originEntity.skyId;
+  const destCode = destIata || destEntity.skyId;
 
   try {
-    console.log(`Amadeus flight search: ${originCode} → ${destCode}, ${params.startDate} → ${params.endDate}, ${params.people} pax, ${travelClass}`);
+    console.log(`Sky Scrapper flight search: ${originEntity.skyId}(${originEntity.entityId}) → ${destEntity.skyId}(${destEntity.entityId})`);
 
-    const response = await amadeus.shopping.flightOffersSearch.get({
-      originLocationCode: originCode,
-      destinationLocationCode: destCode,
-      departureDate: params.startDate,
-      returnDate: params.endDate,
-      adults: params.people,
-      travelClass,
-      currencyCode: 'EUR',
-      max: 6,
-    });
+    const searchUrl = `https://sky-scrapper.p.rapidapi.com/api/v2/flights/searchFlightsComplete`
+      + `?originSkyId=${originEntity.skyId}`
+      + `&destinationSkyId=${destEntity.skyId}`
+      + `&originEntityId=${originEntity.entityId}`
+      + `&destinationEntityId=${destEntity.entityId}`
+      + `&date=${params.startDate}`
+      + `&returnDate=${params.endDate}`
+      + `&adults=${params.people}`
+      + `&cabinClass=${cabinClass}`
+      + `&currency=EUR`
+      + `&market=FR`
+      + `&locale=fr-FR`;
 
-    const flights: RealFlightOffer[] = response.data.map((offer: any) => {
-      const outbound = offer.itineraries[0];
-      const inbound = offer.itineraries[1];
-      const firstSeg = outbound.segments[0];
-      const lastOutSeg = outbound.segments[outbound.segments.length - 1];
-      const carrierCode = firstSeg.carrierCode;
+    const data = await rapidApiFetch(searchUrl);
 
-      const firstReturnSeg = inbound?.segments[0];
-      const lastReturnSeg = inbound?.segments[inbound.segments.length - 1];
+    if (!data?.data?.itineraries || data.data.itineraries.length === 0) {
+      console.log('No flight itineraries found');
+      return null;
+    }
+
+    const skyscannerLink = buildSkyscannerLink(originCode, destCode, params.startDate, params.endDate, params.people, cabinClass);
+
+    const flights: RealFlightOffer[] = data.data.itineraries.slice(0, 8).map((itin: any) => {
+      const price = itin.price?.raw || itin.price?.formatted?.replace(/[^\d.,]/g, '') || 0;
+      const outLeg = itin.legs?.[0];
+      const inLeg = itin.legs?.[1];
+
+      const carrier = outLeg?.carriers?.marketing?.[0] || {};
+      const airlineName = carrier.name || 'Compagnie';
+      const airlineCode = carrier.alternateId || '';
 
       return {
-        airline: carrierCode,
-        airlineName: AIRLINE_NAMES[carrierCode] || carrierCode,
-        price: parseFloat(offer.price.total),
-        currency: offer.price.currency || 'EUR',
-        departureAt: firstSeg.departure.at,
-        arrivalAt: lastOutSeg.arrival.at,
-        returnDepartureAt: firstReturnSeg?.departure.at || '',
-        returnArrivalAt: lastReturnSeg?.arrival.at || '',
-        duration: formatDuration(outbound.duration),
-        stops: outbound.segments.length - 1,
-        cabinClass: travelClass,
-        bookingUrl: buildSkyscannerDeepLink(originCode, destCode, params.startDate, params.endDate, params.people, travelClass),
-        source: 'amadeus' as const,
+        airline: airlineCode,
+        airlineName,
+        price: typeof price === 'number' ? Math.round(price) : Math.round(parseFloat(String(price).replace(',', '.'))),
+        currency: 'EUR',
+        departureAt: outLeg?.departure || '',
+        arrivalAt: outLeg?.arrival || '',
+        returnDepartureAt: inLeg?.departure || '',
+        returnArrivalAt: inLeg?.arrival || '',
+        duration: outLeg?.durationInMinutes ? formatMinutes(outLeg.durationInMinutes) : '',
+        stops: outLeg?.stopCount ?? 0,
+        cabinClass,
+        bookingUrl: skyscannerLink,
+        source: 'skyscanner' as const,
       };
-    });
+    }).filter((f: RealFlightOffer) => f.price > 0);
 
-    // Sort by price
     flights.sort((a, b) => a.price - b.price);
 
-    console.log(`Found ${flights.length} real flights`);
+    console.log(`Found ${flights.length} real Skyscanner flights`);
     return { flights, originCode, destCode };
   } catch (error: any) {
-    console.error('Amadeus flight search error:', error?.response?.result?.errors || error.message || error);
+    console.error('Sky Scrapper flight search error:', error.message || error);
     return null;
   }
 }
