@@ -16,7 +16,22 @@ const app = express();
 app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 
 // Middleware
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+const allowedOrigins = [
+  env.CLIENT_URL,
+  'http://localhost:3000',
+  'https://smartbudget-travel.netlify.app',
+];
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      if (/^https:\/\/[a-z0-9-]+--smartbudget-travel\.netlify\.app$/.test(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
