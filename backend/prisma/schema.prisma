@@ -19,15 +19,20 @@ model User {
 }
 
 model Simulation {
-  id          String   @id @default(uuid())
-  userId      String
-  destination String
-  duration    Int
-  people      Int
-  budget      Float
-  itinerary   String?  @db.Text
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  userId         String
+  destination    String
+  departureCity  String   @default("")
+  startDate      String   @default("")
+  endDate        String   @default("")
+  duration       Int
+  people         Int
+  budget         Float
+  budgetData     String?  @db.Text
+  aiTips         String?  @db.Text
+  itinerary      String?  @db.Text
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Subscription {

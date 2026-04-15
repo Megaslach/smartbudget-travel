@@ -1,4 +1,4 @@
-import { AuthResponse, SimulationResponse, TripResponse, Simulation } from '@/types';
+import { AuthResponse, SimulationResponse, TripResponse, Simulation, PriceCheckResponse } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -79,6 +79,14 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ simulationId }),
     });
+  }
+
+  async getSimulationDetail(id: string): Promise<{ simulation: Simulation }> {
+    return this.request(`/simulation/${id}`);
+  }
+
+  async priceCheck(id: string): Promise<PriceCheckResponse> {
+    return this.request(`/simulation/${id}/price-check`);
   }
 
   // Stripe

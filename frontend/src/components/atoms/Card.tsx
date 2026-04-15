@@ -7,9 +7,10 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   hover?: boolean;
+  onClick?: () => void;
 }
 
-export default function Card({ children, className = '', hover = false }: CardProps) {
+export default function Card({ children, className = '', hover = false, onClick }: CardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -17,6 +18,7 @@ export default function Card({ children, className = '', hover = false }: CardPr
       transition={{ duration: 0.4 }}
       whileHover={hover ? { y: -4, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' } : undefined}
       className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-6 ${className}`}
+      onClick={onClick}
     >
       {children}
     </motion.div>

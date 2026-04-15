@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Lock } from 'lucide-react';
-import { BudgetEstimate, ItineraryDay } from '@/types';
+import { BudgetEstimate, ItineraryDay, AiTipsResult } from '@/types';
 import Button from '@/components/atoms/Button';
 import Loader from '@/components/atoms/Loader';
 import BudgetResultCard from '@/components/molecules/BudgetResultCard';
+import AiTipsCard from '@/components/molecules/AiTipsCard';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -18,9 +19,10 @@ interface ResultsSectionProps {
   destination: string;
   duration: number;
   people: number;
+  aiTips?: AiTipsResult;
 }
 
-export default function ResultsSection({ simulationId, budget, destination, duration, people }: ResultsSectionProps) {
+export default function ResultsSection({ simulationId, budget, destination, duration, people, aiTips }: ResultsSectionProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [itinerary, setItinerary] = useState<ItineraryDay[] | null>(null);
@@ -52,6 +54,8 @@ export default function ResultsSection({ simulationId, budget, destination, dura
       className="space-y-8"
     >
       <BudgetResultCard budget={budget} destination={destination} duration={duration} people={people} />
+
+      {aiTips && <AiTipsCard tips={aiTips} />}
 
       <div className="text-center">
         {!itinerary && !isGenerating && (

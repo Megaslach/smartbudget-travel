@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/atoms/Button';
 import Badge from '@/components/atoms/Badge';
-import { Palmtree, LogOut, LayoutDashboard, CreditCard } from 'lucide-react';
+import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -30,6 +30,12 @@ export default function Navbar() {
                   <Button variant="ghost" size="sm">
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboard
+                  </Button>
+                </Link>
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm">
+                    <UserCircle className="h-4 w-4" />
+                    Profil
                   </Button>
                 </Link>
                 <Link href="/simulation">

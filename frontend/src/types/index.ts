@@ -82,6 +82,39 @@ export interface BudgetEstimate {
   summary: string;
 }
 
+export interface SmartTip {
+  type: 'saving' | 'timing' | 'alternative' | 'insider' | 'warning';
+  icon: string;
+  title: string;
+  description: string;
+  potentialSaving?: number;
+  isPremium: boolean;
+}
+
+export interface FlexibleDate {
+  startDate: string;
+  endDate: string;
+  estimatedSaving: number;
+  label: string;
+}
+
+export interface AiTipsResult {
+  tips: SmartTip[];
+  flexibleDates?: FlexibleDate[];
+  bestBookingWindow: string;
+  priceOutlook: 'rising' | 'stable' | 'falling';
+  priceOutlookNote: string;
+}
+
+export interface PriceComparison {
+  totalDiff: number;
+  totalDiffPercent: number;
+  flightDiffPerPerson: number;
+  hotelDiffPerNight: number;
+  trend: 'up' | 'down' | 'stable';
+  advice: string;
+}
+
 export interface Simulation {
   id: string;
   destination: string;
@@ -91,6 +124,8 @@ export interface Simulation {
   duration: number;
   people: number;
   budget: number | BudgetEstimate;
+  budgetData?: BudgetEstimate;
+  aiTips?: AiTipsResult;
   itinerary?: string;
   createdAt: string;
 }
@@ -124,8 +159,15 @@ export interface SimulationResponse {
     duration: number;
     people: number;
     budget: BudgetEstimate;
+    aiTips?: AiTipsResult;
     createdAt: string;
   };
+}
+
+export interface PriceCheckResponse {
+  original: BudgetEstimate;
+  current: BudgetEstimate;
+  comparison: PriceComparison;
 }
 
 export interface TripResponse {

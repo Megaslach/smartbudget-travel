@@ -7,7 +7,7 @@ import SimulationForm from '@/components/organisms/SimulationForm';
 import ResultsSection from '@/components/organisms/ResultsSection';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { BudgetEstimate } from '@/types';
+import { BudgetEstimate, AiTipsResult } from '@/types';
 import toast from 'react-hot-toast';
 
 interface SimulationResult {
@@ -19,6 +19,7 @@ interface SimulationResult {
   endDate: string;
   duration: number;
   people: number;
+  aiTips?: AiTipsResult;
 }
 
 export default function SimulationPage() {
@@ -45,6 +46,7 @@ export default function SimulationPage() {
         endDate: response.simulation.endDate,
         duration: response.simulation.duration,
         people: response.simulation.people,
+        aiTips: response.simulation.aiTips,
       });
       toast.success('Simulation terminée !');
     } catch (err: any) {
@@ -65,6 +67,7 @@ export default function SimulationPage() {
             destination={result.destination}
             duration={result.duration}
             people={result.people}
+            aiTips={result.aiTips}
           />
         )}
       </div>
