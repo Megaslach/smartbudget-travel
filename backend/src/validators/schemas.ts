@@ -19,11 +19,23 @@ export const simulationSchema = z.object({
   // Premium filters (optional)
   premiumFilters: z.object({
     accommodationArea: z.string().optional(),
-    accommodationType: z.enum(['hotel', 'airbnb', 'hostel', 'luxury']).optional(),
+    accommodationType: z.enum(['hotel', 'apartment', 'villa', 'hostel', 'luxury', 'bnb']).optional(),
+    roomType: z.enum(['single', 'double', 'twin', 'family', 'suite']).optional(),
     flightClass: z.enum(['economy', 'premium_economy', 'business', 'first']).optional(),
+    flightTimePreference: z.enum(['morning', 'afternoon', 'evening', 'night', 'any']).optional(),
+    directFlightOnly: z.boolean().optional(),
+    maxLayoverHours: z.number().optional(),
     foodBudget: z.enum(['budget', 'moderate', 'premium', 'luxury']).optional(),
+    dietaryPreferences: z.array(z.enum(['vegetarian', 'vegan', 'gluten_free', 'halal', 'kosher'])).optional(),
+    transportPreference: z.enum(['car', 'public', 'mixed', 'walk_bike']).optional(),
+    tripPace: z.enum(['relaxed', 'balanced', 'packed']).optional(),
+    tripStyle: z.enum(['cultural', 'adventure', 'romantic', 'family', 'nightlife', 'wellness', 'gastronomic']).optional(),
     interests: z.array(z.string()).optional(),
+    mustSeeList: z.string().optional(),
+    avoidList: z.string().optional(),
     maxBudget: z.number().optional(),
+    hasChildren: z.boolean().optional(),
+    hasAccessibilityNeeds: z.boolean().optional(),
   }).optional(),
 });
 

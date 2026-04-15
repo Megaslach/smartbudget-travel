@@ -43,8 +43,9 @@ export async function searchSerpApiHotels(params: {
   url.searchParams.set('currency', 'EUR');
   url.searchParams.set('hl', 'fr');
   url.searchParams.set('gl', 'fr');
-  if (params.accommodationType === 'hotel') url.searchParams.set('property_types', '17');
-  if (params.accommodationType === 'airbnb') url.searchParams.set('vacation_rentals', 'true');
+  const at = params.accommodationType;
+  if (at === 'hotel' || at === 'luxury') url.searchParams.set('property_types', '17');
+  if (at === 'apartment' || at === 'villa' || at === 'bnb' || at === 'airbnb') url.searchParams.set('vacation_rentals', 'true');
   url.searchParams.set('api_key', env.SERPAPI_KEY);
 
   const duration = Math.max(1, Math.ceil(

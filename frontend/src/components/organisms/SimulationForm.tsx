@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, PlaneTakeoff, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown } from 'lucide-react';
+import { MapPin, PlaneTakeoff, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown, Clock, Car, Baby, Accessibility, Heart, Zap, Leaf } from 'lucide-react';
 import Button from '@/components/atoms/Button';
 import DateRangePicker from '@/components/molecules/DateRangePicker';
 import { api } from '@/lib/api';
@@ -89,10 +89,22 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
   // Premium filters
   const [accommodationArea, setAccommodationArea] = useState('');
   const [accommodationType, setAccommodationType] = useState<PremiumFilters['accommodationType']>();
+  const [roomType, setRoomType] = useState<PremiumFilters['roomType']>();
   const [flightClass, setFlightClass] = useState<PremiumFilters['flightClass']>('economy');
+  const [flightTimePreference, setFlightTimePreference] = useState<PremiumFilters['flightTimePreference']>('any');
+  const [directFlightOnly, setDirectFlightOnly] = useState(false);
+  const [maxLayoverHours, setMaxLayoverHours] = useState('');
   const [foodBudget, setFoodBudget] = useState<PremiumFilters['foodBudget']>('moderate');
+  const [dietaryPreferences, setDietaryPreferences] = useState<NonNullable<PremiumFilters['dietaryPreferences']>>([]);
+  const [transportPreference, setTransportPreference] = useState<PremiumFilters['transportPreference']>('mixed');
+  const [tripPace, setTripPace] = useState<PremiumFilters['tripPace']>('balanced');
+  const [tripStyle, setTripStyle] = useState<PremiumFilters['tripStyle']>();
   const [interests, setInterests] = useState<string[]>([]);
+  const [mustSeeList, setMustSeeList] = useState('');
+  const [avoidList, setAvoidList] = useState('');
   const [maxBudget, setMaxBudget] = useState('');
+  const [hasChildren, setHasChildren] = useState(false);
+  const [hasAccessibilityNeeds, setHasAccessibilityNeeds] = useState(false);
 
   const depAc = useAutocomplete<AirportResult>(
     useCallback(async (q: string) => (await api.searchAirports(q)).airports, []),
@@ -124,10 +136,22 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
     const premiumFilters: PremiumFilters | undefined = isPremium && showPremiumFilters ? {
       ...(accommodationArea ? { accommodationArea } : {}),
       ...(accommodationType ? { accommodationType } : {}),
+      ...(roomType ? { roomType } : {}),
       ...(flightClass && flightClass !== 'economy' ? { flightClass } : {}),
+      ...(flightTimePreference && flightTimePreference !== 'any' ? { flightTimePreference } : {}),
+      ...(directFlightOnly ? { directFlightOnly } : {}),
+      ...(maxLayoverHours ? { maxLayoverHours: parseInt(maxLayoverHours) } : {}),
       ...(foodBudget && foodBudget !== 'moderate' ? { foodBudget } : {}),
+      ...(dietaryPreferences.length > 0 ? { dietaryPreferences } : {}),
+      ...(transportPreference && transportPreference !== 'mixed' ? { transportPreference } : {}),
+      ...(tripPace && tripPace !== 'balanced' ? { tripPace } : {}),
+      ...(tripStyle ? { tripStyle } : {}),
       ...(interests.length > 0 ? { interests } : {}),
+      ...(mustSeeList ? { mustSeeList } : {}),
+      ...(avoidList ? { avoidList } : {}),
       ...(maxBudget ? { maxBudget: parseInt(maxBudget) } : {}),
+      ...(hasChildren ? { hasChildren } : {}),
+      ...(hasAccessibilityNeeds ? { hasAccessibilityNeeds } : {}),
     } : undefined;
 
     await onSubmit({ destination: destination.trim(), departureCity: departureCity.trim(), startDate, endDate, people: parseInt(people), premiumFilters });
@@ -298,7 +322,7 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
                   <p className="text-xs text-gray-400 mt-1">L&apos;IA cherchera des logements dans ce quartier spécifiquement</p>
                 </div>
 
-                {/* Type hébergement + Classe de vol */}
+                {/* Type hébergement + Chambre */}
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -311,11 +335,34 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
                     >
                       <option value="">Tous types</option>
                       <option value="hostel">Auberge de jeunesse</option>
-                      <option value="airbnb">Airbnb / Appartement</option>
+                      <option value="apartment">Appartement</option>
+                      <option value="villa">Villa / Maison</option>
+                      <option value="bnb">Chambre d&apos;hôtes / B&amp;B</option>
                       <option value="hotel">Hôtel classique (3-4*)</option>
                       <option value="luxury">Hôtel de luxe (5*)</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Building2 className="inline h-4 w-4 mr-1 text-amber-500" />Type de chambre
+                    </label>
+                    <select
+                      value={roomType || ''}
+                      onChange={(e) => setRoomType(e.target.value as PremiumFilters['roomType'] || undefined)}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="">Peu importe</option>
+                      <option value="single">Simple (1 pers)</option>
+                      <option value="double">Double (lit double)</option>
+                      <option value="twin">Twin (2 lits simples)</option>
+                      <option value="family">Familiale</option>
+                      <option value="suite">Suite</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Classe de vol + Heure de vol */}
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                       <Plane className="inline h-4 w-4 mr-1 text-amber-500" />Classe de vol
@@ -330,6 +377,53 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
                       <option value="business">Classe Affaires</option>
                       <option value="first">Première Classe</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Clock className="inline h-4 w-4 mr-1 text-amber-500" />Heure de départ préférée
+                    </label>
+                    <select
+                      value={flightTimePreference || 'any'}
+                      onChange={(e) => setFlightTimePreference(e.target.value as PremiumFilters['flightTimePreference'])}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="any">Peu importe</option>
+                      <option value="morning">Matin (6h — 12h)</option>
+                      <option value="afternoon">Après-midi (12h — 18h)</option>
+                      <option value="evening">Soir (18h — 23h)</option>
+                      <option value="night">Vol de nuit (23h — 6h)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Vols directs + Escale max */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50/30 cursor-pointer hover:border-amber-400 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={directFlightOnly}
+                      onChange={(e) => setDirectFlightOnly(e.target.checked)}
+                      className="h-4 w-4 rounded accent-amber-500"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">Vols directs uniquement</p>
+                      <p className="text-[11px] text-gray-500">Ignorer les vols avec escale</p>
+                    </div>
+                  </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Clock className="inline h-4 w-4 mr-1 text-amber-500" />Escale max (heures)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 4"
+                      min="0"
+                      max="24"
+                      value={maxLayoverHours}
+                      onChange={(e) => setMaxLayoverHours(e.target.value)}
+                      disabled={directFlightOnly}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 disabled:opacity-50"
+                    />
                   </div>
                 </div>
 
@@ -363,6 +457,160 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
                       className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30"
                     />
                   </div>
+                </div>
+
+                {/* Transport préféré + Rythme */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Car className="inline h-4 w-4 mr-1 text-amber-500" />Transport préféré
+                    </label>
+                    <select
+                      value={transportPreference || 'mixed'}
+                      onChange={(e) => setTransportPreference(e.target.value as PremiumFilters['transportPreference'])}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="mixed">Mixte</option>
+                      <option value="car">Voiture de location</option>
+                      <option value="public">Transports en commun</option>
+                      <option value="walk_bike">Marche / Vélo</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Zap className="inline h-4 w-4 mr-1 text-amber-500" />Rythme du voyage
+                    </label>
+                    <select
+                      value={tripPace || 'balanced'}
+                      onChange={(e) => setTripPace(e.target.value as PremiumFilters['tripPace'])}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30 appearance-none"
+                    >
+                      <option value="relaxed">Détente (peu d&apos;activités)</option>
+                      <option value="balanced">Équilibré</option>
+                      <option value="packed">Intense (journées chargées)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Style de voyage */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <Heart className="inline h-4 w-4 mr-1 text-amber-500" />Style de voyage
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { id: 'cultural', label: 'Culturel', icon: '🏛️' },
+                      { id: 'adventure', label: 'Aventure', icon: '🧗' },
+                      { id: 'romantic', label: 'Romantique', icon: '💕' },
+                      { id: 'family', label: 'Famille', icon: '👨‍👩‍👧' },
+                      { id: 'nightlife', label: 'Festif', icon: '🎉' },
+                      { id: 'wellness', label: 'Bien-être', icon: '🧘' },
+                      { id: 'gastronomic', label: 'Gastronomique', icon: '🍷' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setTripStyle(tripStyle === s.id ? undefined : s.id as PremiumFilters['tripStyle'])}
+                        className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                          tripStyle === s.id
+                            ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:border-amber-400'
+                        }`}
+                      >
+                        {s.icon} {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Régimes alimentaires */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <Leaf className="inline h-4 w-4 mr-1 text-amber-500" />Régime alimentaire
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'vegetarian', label: 'Végétarien' },
+                      { id: 'vegan', label: 'Végan' },
+                      { id: 'gluten_free', label: 'Sans gluten' },
+                      { id: 'halal', label: 'Halal' },
+                      { id: 'kosher', label: 'Casher' },
+                    ].map((d) => {
+                      const active = dietaryPreferences.includes(d.id as any);
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setDietaryPreferences(prev => active ? prev.filter(x => x !== d.id) : [...prev, d.id as any])}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                            active
+                              ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200 hover:border-amber-400'
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Must-see + À éviter */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Heart className="inline h-4 w-4 mr-1 text-amber-500" />À visiter absolument
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Tour Eiffel, Louvre, Versailles"
+                      value={mustSeeList}
+                      onChange={(e) => setMustSeeList(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      <Compass className="inline h-4 w-4 mr-1 text-amber-500" />À éviter
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: quartiers touristiques, fast-food"
+                      value={avoidList}
+                      onChange={(e) => setAvoidList(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Enfants + PMR */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50/30 cursor-pointer hover:border-amber-400 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={hasChildren}
+                      onChange={(e) => setHasChildren(e.target.checked)}
+                      className="h-4 w-4 rounded accent-amber-500"
+                    />
+                    <Baby className="h-4 w-4 text-amber-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">Voyage avec enfants</p>
+                      <p className="text-[11px] text-gray-500">Activités & hébergements adaptés</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50/30 cursor-pointer hover:border-amber-400 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={hasAccessibilityNeeds}
+                      onChange={(e) => setHasAccessibilityNeeds(e.target.checked)}
+                      className="h-4 w-4 rounded accent-amber-500"
+                    />
+                    <Accessibility className="h-4 w-4 text-amber-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">Accessibilité PMR</p>
+                      <p className="text-[11px] text-gray-500">Priorise les lieux accessibles</p>
+                    </div>
+                  </label>
                 </div>
 
                 {/* Centres d'intérêt */}

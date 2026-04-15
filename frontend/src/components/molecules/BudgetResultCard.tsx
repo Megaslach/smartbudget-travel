@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BudgetEstimate } from '@/types';
 import Card from '@/components/atoms/Card';
@@ -16,16 +17,33 @@ const confidenceColors = { high: 'bg-emerald-100 text-emerald-700', medium: 'bg-
 const confidenceLabels = { high: 'Fiabilité haute', medium: 'Fiabilité moyenne', low: 'Estimation approximative' };
 
 export default function BudgetResultCard({ budget, destination, duration, people }: BudgetResultCardProps) {
+  const [transportMode, setTransportMode] = useState<'public' | 'car'>('public');
+  const [selectedCarIndex, setSelectedCarIndex] = useState<number>(0);
+
   const flightsTotal = budget.flights.avgPrice * people;
   const activitiesTotal = typeof budget.activities === 'object' ? budget.activities.total : budget.activities;
   const allAiEstimated = !budget.flights.isRealData && !budget.accommodation.isRealData;
   const perPerson = (total: number) => (people > 0 ? Math.round(total / people) : total);
-  const totalPerPerson = perPerson(budget.total);
+
+  const carOptions = budget.localTransport?.carRentals.options || [];
+  const selectedCar = transportMode === 'car' && carOptions.length > 0 ? carOptions[Math.min(selectedCarIndex, carOptions.length - 1)] : null;
+  const effectiveTransport = selectedCar ? selectedCar.totalPrice : budget.transport;
+  const effectiveTotal = budget.total - budget.transport + effectiveTransport;
+  const totalPerPerson = perPerson(effectiveTotal);
+
   const summaryCategories = [
     { label: 'Vols A/R', value: flightsTotal, perPerson: budget.flights.avgPrice, icon: Plane, color: 'text-sky-500', bg: 'bg-sky-50', hint: `${budget.flights.avgPrice.toLocaleString()}€/pers × ${people}` },
     { label: 'Hébergement', value: budget.accommodation.total, perPerson: perPerson(budget.accommodation.total), icon: Hotel, color: 'text-indigo-500', bg: 'bg-indigo-50', hint: `${budget.accommodation.avgPerNight}€/nuit × ${duration} nuit${duration > 1 ? 's' : ''}` },
     { label: 'Restauration', value: budget.food, perPerson: perPerson(budget.food), icon: Utensils, color: 'text-orange-500', bg: 'bg-orange-50', hint: `groupe de ${people}` },
-    { label: 'Transport', value: budget.transport, perPerson: perPerson(budget.transport), icon: Bus, color: 'text-emerald-500', bg: 'bg-emerald-50', hint: 'sur place' },
+    {
+      label: 'Transport',
+      value: effectiveTransport,
+      perPerson: perPerson(effectiveTransport),
+      icon: selectedCar ? Car : Bus,
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-50',
+      hint: selectedCar ? `${selectedCar.provider} · ${selectedCar.category}` : 'transports en commun',
+    },
     { label: 'Activités', value: activitiesTotal, perPerson: perPerson(activitiesTotal), icon: Ticket, color: 'text-purple-500', bg: 'bg-purple-50', hint: `pour ${people} pers` },
   ];
 
@@ -81,12 +99,13 @@ export default function BudgetResultCard({ budget, destination, duration, people
           <div className="relative mt-4 flex flex-wrap items-end gap-x-4 gap-y-1">
             <div className="flex items-end gap-2">
               <motion.span
+                key={effectiveTotal}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
+                transition={{ duration: 0.3 }}
                 className="text-4xl font-extrabold"
               >
-                {budget.total.toLocaleString()}€
+                {Math.round(effectiveTotal).toLocaleString()}€
               </motion.span>
               <span className="text-white/60 text-sm pb-1">total groupe</span>
             </div>
@@ -244,9 +263,45 @@ export default function BudgetResultCard({ budget, destination, duration, people
                 <Car className="h-5 w-5 text-emerald-500" /> Transport sur place
               </h4>
               <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-                Budget estimé : {budget.localTransport.estimatedBudget.toLocaleString()}€
+                {selectedCar ? `Voiture : ${selectedCar.totalPrice.toLocaleString()}€` : `Transports : ${budget.transport.toLocaleString()}€`}
               </span>
             </div>
+
+            {carOptions.length > 0 && (
+              <div className="mb-4 p-1 inline-flex bg-sand-100 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setTransportMode('public')}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                    transportMode === 'public'
+                      ? 'bg-white text-emerald-700 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Train className="h-4 w-4" /> Transports en commun
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTransportMode('car')}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                    transportMode === 'car'
+                      ? 'bg-white text-emerald-700 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Car className="h-4 w-4" /> Louer une voiture
+                </button>
+              </div>
+            )}
+
+            {selectedCar && (
+              <div className="mb-4 flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <p className="text-xs text-emerald-900">
+                  <span className="font-semibold">{selectedCar.provider} {selectedCar.category}</span> sélectionné · {selectedCar.pricePerDay}€/jour × {duration}j = {selectedCar.totalPrice.toLocaleString()}€ (remplace les transports en commun dans le total).
+                </p>
+              </div>
+            )}
 
             {budget.localTransport.recommendation && (
               <div className="mb-4 flex items-start gap-2 p-3 rounded-xl bg-emerald-50/60 border border-emerald-100">
@@ -266,40 +321,66 @@ export default function BudgetResultCard({ budget, destination, duration, people
                   </a>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {budget.localTransport.carRentals.options.map((c, i) => (
-                    <a key={i} href={c.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col bg-white rounded-xl border border-emerald-100 overflow-hidden hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/10 transition-all group">
-                      <div className="relative h-28 bg-gradient-to-br from-emerald-100 to-emerald-50 overflow-hidden">
-                        {c.imageUrl ? (
-                          <img src={c.imageUrl} alt={c.category} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Car className="h-10 w-10 text-emerald-300" />
+                  {budget.localTransport.carRentals.options.map((c, i) => {
+                    const isSelected = transportMode === 'car' && i === selectedCarIndex;
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => { setTransportMode('car'); setSelectedCarIndex(i); }}
+                        className={`flex flex-col bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all group cursor-pointer ${
+                          isSelected
+                            ? 'border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg shadow-emerald-500/20'
+                            : 'border-emerald-100 hover:border-emerald-300 hover:shadow-emerald-500/10'
+                        }`}
+                      >
+                        <div className="relative h-28 bg-gradient-to-br from-emerald-100 to-emerald-50 overflow-hidden">
+                          {c.imageUrl ? (
+                            <img src={c.imageUrl} alt={c.category} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Car className="h-10 w-10 text-emerald-300" />
+                            </div>
+                          )}
+                          <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
+                            <p className="font-bold text-sm text-gray-900">{c.pricePerDay}€<span className="text-[10px] text-gray-400 font-normal">/jour</span></p>
                           </div>
-                        )}
-                        <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
-                          <p className="font-bold text-sm text-gray-900">{c.pricePerDay}€<span className="text-[10px] text-gray-400 font-normal">/jour</span></p>
+                          <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+                            {c.provider}
+                          </div>
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-emerald-500/10 flex items-end justify-end p-2">
+                              <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                                <CheckCircle2 className="h-3 w-3" /> Sélectionné
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
-                          {c.provider}
+                        <div className="p-3">
+                          <p className="font-medium text-gray-900 text-sm">{c.category}</p>
+                          <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {c.location}</p>
+                          {c.features.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {c.features.slice(0, 3).map((f, fi) => (
+                                <span key={fi} className="text-[10px] px-1.5 py-0.5 bg-sand-100 text-gray-600 rounded">{f}</span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-sand-100">
+                            <p className="text-[11px] text-gray-400">total {c.totalPrice.toLocaleString()}€ ({duration}j)</p>
+                            <a
+                              href={c.bookingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] font-semibold text-primary-500 hover:underline whitespace-nowrap"
+                            >
+                              Réserver →
+                            </a>
+                          </div>
                         </div>
                       </div>
-                      <div className="p-3">
-                        <p className="font-medium text-gray-900 text-sm">{c.category}</p>
-                        <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {c.location}</p>
-                        {c.features.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {c.features.slice(0, 3).map((f, fi) => (
-                              <span key={fi} className="text-[10px] px-1.5 py-0.5 bg-sand-100 text-gray-600 rounded">{f}</span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-sand-100">
-                          <p className="text-[11px] text-gray-400">total {c.totalPrice.toLocaleString()}€ ({duration}j)</p>
-                          <span className="text-[10px] font-semibold text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

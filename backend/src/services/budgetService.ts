@@ -110,11 +110,23 @@ export interface BudgetEstimate {
 
 export interface PremiumFilters {
   accommodationArea?: string;
-  accommodationType?: 'hotel' | 'airbnb' | 'hostel' | 'luxury';
+  accommodationType?: 'hotel' | 'apartment' | 'villa' | 'hostel' | 'luxury' | 'bnb';
+  roomType?: 'single' | 'double' | 'twin' | 'family' | 'suite';
   flightClass?: 'economy' | 'premium_economy' | 'business' | 'first';
+  flightTimePreference?: 'morning' | 'afternoon' | 'evening' | 'night' | 'any';
+  directFlightOnly?: boolean;
+  maxLayoverHours?: number;
   foodBudget?: 'budget' | 'moderate' | 'premium' | 'luxury';
+  dietaryPreferences?: Array<'vegetarian' | 'vegan' | 'gluten_free' | 'halal' | 'kosher'>;
+  transportPreference?: 'car' | 'public' | 'mixed' | 'walk_bike';
+  tripPace?: 'relaxed' | 'balanced' | 'packed';
+  tripStyle?: 'cultural' | 'adventure' | 'romantic' | 'family' | 'nightlife' | 'wellness' | 'gastronomic';
   interests?: string[];
+  mustSeeList?: string;
+  avoidList?: string;
   maxBudget?: number;
+  hasChildren?: boolean;
+  hasAccessibilityNeeds?: boolean;
 }
 
 export interface SimulationInput {
@@ -467,9 +479,21 @@ async function getAiEstimates(
   const premiumSection = pf ? [
     pf.accommodationArea && `- Quartier hébergement : ${pf.accommodationArea}`,
     pf.accommodationType && `- Type : ${pf.accommodationType}`,
+    pf.roomType && `- Chambre : ${pf.roomType}`,
     pf.flightClass && `- Classe vol : ${pf.flightClass}`,
+    pf.flightTimePreference && pf.flightTimePreference !== 'any' && `- Heure vol : ${pf.flightTimePreference}`,
+    pf.directFlightOnly && `- Vols directs uniquement`,
+    pf.maxLayoverHours && `- Escale max : ${pf.maxLayoverHours}h`,
     pf.foodBudget && `- Repas : ${pf.foodBudget}`,
+    pf.dietaryPreferences?.length && `- Régime : ${pf.dietaryPreferences.join(', ')}`,
+    pf.transportPreference && `- Transport préféré : ${pf.transportPreference}`,
+    pf.tripPace && `- Rythme : ${pf.tripPace}`,
+    pf.tripStyle && `- Style voyage : ${pf.tripStyle}`,
     pf.interests?.length && `- Intérêts : ${pf.interests.join(', ')}`,
+    pf.mustSeeList && `- À visiter absolument : ${pf.mustSeeList}`,
+    pf.avoidList && `- À éviter : ${pf.avoidList}`,
+    pf.hasChildren && `- Voyage avec enfants`,
+    pf.hasAccessibilityNeeds && `- Besoins d'accessibilité (PMR)`,
     pf.maxBudget && `- Budget max : ${pf.maxBudget}€`,
   ].filter(Boolean).join('\n') : '';
 

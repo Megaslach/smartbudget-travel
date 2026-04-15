@@ -95,11 +95,23 @@ export interface ActivitiesEstimate {
 
 export interface PremiumFilters {
   accommodationArea?: string;
-  accommodationType?: 'hotel' | 'airbnb' | 'hostel' | 'luxury';
+  accommodationType?: 'hotel' | 'apartment' | 'villa' | 'hostel' | 'luxury' | 'bnb';
+  roomType?: 'single' | 'double' | 'twin' | 'family' | 'suite';
   flightClass?: 'economy' | 'premium_economy' | 'business' | 'first';
+  flightTimePreference?: 'morning' | 'afternoon' | 'evening' | 'night' | 'any';
+  directFlightOnly?: boolean;
+  maxLayoverHours?: number;
   foodBudget?: 'budget' | 'moderate' | 'premium' | 'luxury';
+  dietaryPreferences?: Array<'vegetarian' | 'vegan' | 'gluten_free' | 'halal' | 'kosher'>;
+  transportPreference?: 'car' | 'public' | 'mixed' | 'walk_bike';
+  tripPace?: 'relaxed' | 'balanced' | 'packed';
+  tripStyle?: 'cultural' | 'adventure' | 'romantic' | 'family' | 'nightlife' | 'wellness' | 'gastronomic';
   interests?: string[];
+  mustSeeList?: string;
+  avoidList?: string;
   maxBudget?: number;
+  hasChildren?: boolean;
+  hasAccessibilityNeeds?: boolean;
 }
 
 export interface BudgetEstimate {
