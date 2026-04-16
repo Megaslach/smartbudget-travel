@@ -43,13 +43,7 @@ app.use('/api', destinationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    clientUrl: env.CLIENT_URL,
-    hasStripeKey: !!env.STRIPE_SECRET_KEY && env.STRIPE_SECRET_KEY.length > 10,
-    stripePriceId: env.STRIPE_PRICE_ID,
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Serve frontend static files in production
