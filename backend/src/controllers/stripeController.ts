@@ -50,9 +50,9 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
     });
 
     res.json({ url: session.url });
-  } catch (error) {
-    console.error('CreateCheckoutSession error:', error);
-    res.status(500).json({ error: 'Erreur lors de la création de la session de paiement' });
+  } catch (error: any) {
+    console.error('CreateCheckoutSession error:', error?.message || error, error?.type, error?.statusCode);
+    res.status(500).json({ error: error?.message || 'Erreur lors de la création de la session de paiement' });
   }
 };
 
