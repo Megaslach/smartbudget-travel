@@ -148,7 +148,7 @@ JSON uniquement :
   ]
 }`;
 
-  const tokensNeeded = Math.min(Math.max(duration * activitiesPerDay * 120, 2000), 8000);
+  const tokensNeeded = Math.min(Math.max(duration * activitiesPerDay * 200, 3500), 12000);
 
   try {
     const completion = await openai.chat.completions.create({
