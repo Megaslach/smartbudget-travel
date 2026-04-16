@@ -89,7 +89,7 @@ Retourne UNIQUEMENT ce JSON :
         { role: 'user', content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: 2500,
       response_format: { type: 'json_object' },
     });
 

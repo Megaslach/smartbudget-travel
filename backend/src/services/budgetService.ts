@@ -228,9 +228,12 @@ async function searchFlightsCascade(input: SimulationInput): Promise<{
     { fn: () => searchRealFlights(params), name: 'skyscanner' },
   ];
 
+  const cascadeStart = Date.now();
   for (const p of providers) {
+    if (Date.now() - cascadeStart > 18000) break;
     try {
-      const result = await withTimeout(p.fn(), 10000, `Flight:${p.name}`);
+      const remaining = Math.max(3000, 18000 - (Date.now() - cascadeStart));
+      const result = await withTimeout(p.fn(), Math.min(8000, remaining), `Flight:${p.name}`);
       if (result && result.flights && result.flights.length > 0) {
         return { flights: result.flights, source: p.name, originCode: result.originCode || '', destCode: result.destCode || '' };
       }
@@ -253,9 +256,12 @@ async function searchHotelsCascade(input: SimulationInput): Promise<{
     { fn: () => searchRealHotels(params), name: 'skyscanner' },
   ];
 
+  const cascadeStart = Date.now();
   for (const p of providers) {
+    if (Date.now() - cascadeStart > 18000) break;
     try {
-      const result = await withTimeout(p.fn(), 10000, `Hotel:${p.name}`);
+      const remaining = Math.max(3000, 18000 - (Date.now() - cascadeStart));
+      const result = await withTimeout(p.fn(), Math.min(8000, remaining), `Hotel:${p.name}`);
       if (result && Array.isArray(result) && result.length > 0) {
         return { hotels: result, source: p.name };
       }
@@ -426,34 +432,17 @@ async function getAiEstimates(
   const prompt = `Expert voyage. ${departureCity} → ${destination}, ${startDate} au ${endDate} (${duration} nuits), ${people} pers.
 ${premiumSection ? '\nFiltres:\n' + premiumSection : ''}
 
-Retourne UNIQUEMENT ce JSON :
+JSON uniquement :
 {
-  ${!hasRealFlights ? `"flights":{"avgPrice":<A/R par pers EUR>,"note":"<info>","options":[{"airline":"<compagnie>","price":<prix>,"type":"direct/escale"}]},` : ''}
-  ${!hasRealHotels ? `"accommodation":{"avgPerNight":<par nuit groupe>,"total":<total>,"note":"<info>","options":[{"name":"<hotel>","type":"<type>","pricePerNight":<prix>,"rating":<note>}]},` : ''}
-  "food":<total nourriture>,
-  "transport":<total transport local EUR pour tout le séjour et le groupe>,
-  "localTransport":{
-    "recommendation":"<1 phrase : voiture recommandée ou transports en commun suffisants, pourquoi>",
-    "carRentals":[
-      {"provider":"<Hertz/Avis/Europcar/Sixt/Enterprise>","category":"<Économique/Compacte/Berline/SUV/Premium>","pricePerDay":<EUR/jour réaliste>,"location":"<aéroport ou ville précise>","features":["<boîte auto/manuelle>","<X places>","<climatisation>"]}
-    ],
-    "publicTransport":[
-      {"name":"<ex: Ticket métro/bus unitaire>","type":"single","price":<prix EUR>,"description":"<validité, correspondances>"},
-      {"name":"<ex: Pass journée>","type":"day_pass","price":<prix EUR>,"description":"<détail>"},
-      {"name":"<ex: Pass 3 jours touristique>","type":"multi_day","price":<prix EUR>,"description":"<détail>"},
-      {"name":"<ex: Uber centre ↔ aéroport>","type":"uber","price":<prix EUR moyen>,"description":"<durée approximative>"},
-      {"name":"<ex: Taxi course moyenne>","type":"taxi","price":<prix EUR>,"description":"<détail>"},
-      {"name":"<ex: Navette aéroport officielle>","type":"airport_transfer","price":<prix EUR>,"description":"<fréquence>"}
-    ]
-  },
-  "activities":{"total":<total>,"perDayPerPerson":<par jour/pers>,"options":[{"name":"<activité réelle>","price":<prix/pers>,"duration":"<durée>"}]},
-  "summary":"<2 phrases résumé>"
+  ${!hasRealFlights ? `"flights":{"avgPrice":<EUR A/R/pers>,"note":"<info>","options":[{"airline":"<nom>","price":<prix>,"type":"direct/escale"}]},` : ''}
+  ${!hasRealHotels ? `"accommodation":{"avgPerNight":<EUR/nuit>,"total":<total>,"note":"<info>","options":[{"name":"<nom>","type":"<type>","pricePerNight":<prix>,"rating":<note>}]},` : ''}
+  "food":<total nourriture EUR>,
+  "transport":<total transport local EUR séjour+groupe>,
+  "localTransport":{"recommendation":"<1 phrase>","carRentals":[{"provider":"<Hertz/Avis/Europcar/Sixt/Enterprise>","category":"<Éco/Compacte/SUV>","pricePerDay":<EUR>,"location":"<lieu>","features":["<3 features>"]}],"publicTransport":[{"name":"<nom>","type":"<single|day_pass|multi_day|taxi|uber|airport_transfer|bike>","price":<EUR>,"description":"<détail>"}]},
+  "activities":{"total":<total>,"perDayPerPerson":<EUR>,"options":[{"name":"<activité>","price":<EUR/pers>,"duration":"<durée>"}]},
+  "summary":"<2 phrases>"
 }
-
-IMPORTANT pour localTransport :
-- Fournis 3 catégories de voiture différentes (ex: Économique/SUV/Premium), prix réalistes pour ${destination}
-- publicTransport : prix locaux RÉELS pour ${destination} (métro, pass, taxi, Uber). Adapte au pays/ville.
-- Si la destination n'a pas de métro, retire l'option et mets bus/tram à la place.`;
+Règles localTransport: 3 voitures (catégories différentes), 4-6 transports publics réels pour ${destination}.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -463,7 +452,7 @@ IMPORTANT pour localTransport :
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 1500,
+      max_tokens: 1200,
     });
 
     const content = completion.choices[0]?.message?.content;

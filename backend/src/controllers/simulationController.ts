@@ -3,10 +3,28 @@ import prisma from '../config/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { simulationSchema } from '../validators/schemas';
 import { estimateBudget } from '../services/budgetService';
-import { generateSmartTips } from '../services/aiTipsService';
+import { generateSmartTips, AiTipsResult } from '../services/aiTipsService';
 import { generateItinerary } from '../services/itineraryService';
 
+const DEFAULT_TIPS: AiTipsResult = {
+  tips: [
+    { type: 'timing', icon: '📅', title: 'Réservez à l\'avance', description: 'Les meilleurs prix sont disponibles 6-8 semaines avant le départ.', isPremium: false },
+    { type: 'saving', icon: '💰', title: 'Comparez les prix', description: 'Utilisez les liens de réservation pour comparer les offres sur plusieurs sites.', isPremium: false },
+  ],
+  bestBookingWindow: 'Réservez 6-8 semaines avant le départ',
+  priceOutlook: 'stable',
+  priceOutlookNote: 'Tendance stable pour cette période.',
+};
+
+function raceTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export const simulate = async (req: AuthRequest, res: Response): Promise<void> => {
+  const t0 = Date.now();
   try {
     const validation = simulationSchema.safeParse(req.body);
     if (!validation.success) {
@@ -33,11 +51,22 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       }),
     ]);
 
-    const aiTips = await generateSmartTips({
-      destination, departureCity, startDate, endDate, duration, people,
-      budget: budgetEstimate,
-      isPremium: user?.isPremium ?? false,
-    });
+    console.log(`[simulate] budget+itinerary done in ${Date.now() - t0}ms`);
+
+    const remaining = Math.max(2000, 52000 - (Date.now() - t0));
+    const tipsTimeout = Math.min(remaining - 2000, 8000);
+
+    const aiTips = await raceTimeout(
+      generateSmartTips({
+        destination, departureCity, startDate, endDate, duration, people,
+        budget: budgetEstimate,
+        isPremium: user?.isPremium ?? false,
+      }),
+      tipsTimeout,
+      DEFAULT_TIPS,
+    );
+
+    console.log(`[simulate] tips done in ${Date.now() - t0}ms`);
 
     const simulation = await prisma.simulation.create({
       data: {
@@ -55,6 +84,8 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       },
     });
 
+    console.log(`[simulate] total ${Date.now() - t0}ms`);
+
     res.status(201).json({
       simulation: {
         id: simulation.id,
@@ -71,7 +102,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       },
     });
   } catch (error) {
-    console.error('Simulate error:', error);
+    console.error(`Simulate error after ${Date.now() - t0}ms:`, error);
     res.status(500).json({ error: 'Erreur lors de la simulation' });
   }
 };
