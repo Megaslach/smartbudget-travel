@@ -91,10 +91,22 @@ class ApiClient {
   }
 
   // Trip generation (premium)
-  async generateTrip(simulationId: string): Promise<TripResponse> {
+  async generateTrip(simulationId: string, options?: {
+    activitiesPerDay?: number;
+    tripPace?: 'relaxed' | 'balanced' | 'packed';
+    tripStyle?: 'cultural' | 'adventure' | 'romantic' | 'family' | 'nightlife' | 'wellness' | 'gastronomic';
+    interests?: string[];
+    hasChildren?: boolean;
+    hasAccessibilityNeeds?: boolean;
+    dietaryPreferences?: string[];
+    transportPreference?: 'car' | 'public' | 'mixed' | 'walk_bike';
+    budgetLevel?: 'budget' | 'moderate' | 'premium' | 'luxury';
+    avoidList?: string;
+    mustSeeList?: string;
+  }): Promise<TripResponse> {
     return this.request<TripResponse>('/generate-trip', {
       method: 'POST',
-      body: JSON.stringify({ simulationId }),
+      body: JSON.stringify({ simulationId, ...options }),
     });
   }
 

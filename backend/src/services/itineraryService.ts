@@ -29,51 +29,118 @@ export interface Itinerary {
   generatedAt: string;
 }
 
-export async function generateItinerary(params: {
+interface ItineraryParams {
   destination: string;
   startDate: string;
   endDate: string;
   duration: number;
   people: number;
+  activitiesPerDay?: number;
+  tripPace?: 'relaxed' | 'balanced' | 'packed';
+  tripStyle?: 'cultural' | 'adventure' | 'romantic' | 'family' | 'nightlife' | 'wellness' | 'gastronomic';
   interests?: string[];
-}): Promise<Itinerary | null> {
-  const { destination, startDate, duration, people, interests } = params;
+  hasChildren?: boolean;
+  hasAccessibilityNeeds?: boolean;
+  dietaryPreferences?: string[];
+  transportPreference?: 'car' | 'public' | 'mixed' | 'walk_bike';
+  budgetLevel?: 'budget' | 'moderate' | 'premium' | 'luxury';
+  avoidList?: string;
+  mustSeeList?: string;
+}
 
-  const interestsLine = interests && interests.length > 0
-    ? `\nIntérêts du voyageur : ${interests.join(', ')}.`
-    : '';
+const STYLE_LABELS: Record<string, string> = {
+  cultural: 'culturel (musées, histoire, patrimoine)',
+  adventure: 'aventure (sport, plein air, adrénaline)',
+  romantic: 'romantique (couple, ambiance, dîners)',
+  family: 'familial (enfants, ludique, accessible)',
+  nightlife: 'festif (bars, clubs, vie nocturne)',
+  wellness: 'bien-être (spa, yoga, détente)',
+  gastronomic: 'gastronomique (restaurants, marchés, cours de cuisine)',
+};
 
-  const prompt = `Tu es un guide voyage expert. Génère un itinéraire détaillé jour par jour pour ${people} personne(s) à ${destination}, du ${startDate} sur ${duration} nuit(s).${interestsLine}
+const PACE_LABELS: Record<string, string> = {
+  relaxed: 'Rythme détendu : peu d\'activités, temps libre, pas de stress. Privilégie la qualité à la quantité.',
+  balanced: 'Rythme équilibré : mix activités et temps libre.',
+  packed: 'Rythme intensif : maximum d\'activités, journées bien remplies, on veut tout voir.',
+};
 
-Pour chaque jour, propose 3 activités (morning, afternoon, evening) avec :
-- Un titre court et accrocheur
-- Une description de 1-2 phrases qui donne envie
-- Le lieu EXACT (nom du site + quartier/arrondissement)
-- Les coordonnées GPS précises (lat/lng en degrés décimaux)
-- La durée estimée (ex: "2h")
-- Un coût estimé par personne en EUR (0 si gratuit)
-- La catégorie : sight, food, activity, nature, shopping, nightlife
+const BUDGET_LABELS: Record<string, string> = {
+  budget: 'Activités gratuites ou pas chères, street food, transports publics.',
+  moderate: 'Mix gratuit et payant, restaurants corrects, quelques visites payantes.',
+  premium: 'Restaurants gastronomiques, visites privées, expériences premium.',
+  luxury: 'Tout en haut de gamme : privé, exclusif, meilleurs restaurants.',
+};
 
-Mélange culture, gastronomie locale, moments de détente. Évite les clichés trop touristiques si possible. Pour le soir propose souvent une expérience culinaire locale.
+export async function generateItinerary(params: ItineraryParams): Promise<Itinerary | null> {
+  const {
+    destination, startDate, duration, people,
+    activitiesPerDay = 3,
+    tripPace = 'balanced',
+    tripStyle,
+    interests,
+    hasChildren,
+    hasAccessibilityNeeds,
+    dietaryPreferences,
+    transportPreference,
+    budgetLevel,
+    avoidList,
+    mustSeeList,
+  } = params;
 
-Retourne UNIQUEMENT ce JSON :
+  const filters: string[] = [];
+  if (tripPace) filters.push(PACE_LABELS[tripPace] || '');
+  if (tripStyle) filters.push(`Style : ${STYLE_LABELS[tripStyle] || tripStyle}`);
+  if (interests && interests.length > 0) filters.push(`Intérêts : ${interests.join(', ')}`);
+  if (budgetLevel) filters.push(`Budget : ${BUDGET_LABELS[budgetLevel] || budgetLevel}`);
+  if (hasChildren) filters.push('Voyage avec enfants : activités adaptées, accessibles, ludiques.');
+  if (hasAccessibilityNeeds) filters.push('Accessibilité PMR requise : lieux accessibles fauteuil roulant.');
+  if (dietaryPreferences && dietaryPreferences.length > 0) filters.push(`Régime alimentaire : ${dietaryPreferences.join(', ')} — suggestions resto adaptées.`);
+  if (transportPreference === 'walk_bike') filters.push('Privilégie les activités accessibles à pied ou à vélo.');
+  else if (transportPreference === 'public') filters.push('Déplacements en transports en commun uniquement.');
+  else if (transportPreference === 'car') filters.push('Déplacements en voiture : inclure des lieux hors centre-ville.');
+  if (mustSeeList) filters.push(`À voir absolument : ${mustSeeList}`);
+  if (avoidList) filters.push(`À ÉVITER : ${avoidList}`);
+
+  const filtersBlock = filters.length > 0 ? `\nPréférences du voyageur :\n${filters.map(f => `- ${f}`).join('\n')}` : '';
+
+  const timeSlots = activitiesPerDay <= 2
+    ? '["morning","afternoon"]'
+    : activitiesPerDay <= 3
+    ? '["morning","afternoon","evening"]'
+    : `${activitiesPerDay} activités réparties sur morning/afternoon/evening`;
+
+  const prompt = `Guide voyage expert. ${people} personne(s) à ${destination}, du ${startDate} sur ${duration} nuit(s).
+${filtersBlock}
+
+Génère un itinéraire avec exactement ${activitiesPerDay} activité(s) par jour, réparties sur ${timeSlots}.
+
+Pour chaque activité :
+- Titre court et accrocheur
+- Description de 1-2 phrases
+- Lieu EXACT (nom + quartier)
+- Coordonnées GPS précises (lat/lng)
+- Durée estimée
+- Coût estimé/personne en EUR (0 si gratuit)
+- Catégorie : sight, food, activity, nature, shopping, nightlife
+
+JSON uniquement :
 {
   "days": [
     {
       "day": 1,
       "date": "${startDate}",
-      "title": "<titre du jour, ex: 'Arrivée et premières découvertes'>",
-      "summary": "<1 phrase qui résume la journée>",
+      "title": "<titre du jour>",
+      "summary": "<1 phrase>",
       "activities": [
         {
           "time": "morning",
-          "title": "<titre court>",
-          "description": "<1-2 phrases engageantes>",
+          "title": "<titre>",
+          "description": "<1-2 phrases>",
           "location": "<lieu précis>",
           "lat": <latitude>,
           "lng": <longitude>,
           "duration": "<durée>",
-          "estimatedCost": <coût pers EUR>,
+          "estimatedCost": <EUR/pers>,
           "category": "<catégorie>"
         }
       ]
@@ -81,21 +148,23 @@ Retourne UNIQUEMENT ce JSON :
   ]
 }`;
 
+  const tokensNeeded = Math.min(Math.max(duration * activitiesPerDay * 120, 2000), 8000);
+
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: 'Guide voyage expert. JSON uniquement. Coordonnées GPS précises (5 décimales minimum).' },
+        { role: 'system', content: 'Guide voyage expert. JSON uniquement. Coordonnées GPS précises. Lieux et prix réels.' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 3500,
+      max_tokens: tokensNeeded,
       response_format: { type: 'json_object' },
     });
 
     const content = completion.choices[0]?.message?.content;
     const finishReason = completion.choices[0]?.finish_reason;
-    console.log(`[itinerary] finish_reason=${finishReason}, content_length=${content?.length || 0}, tokens=${completion.usage?.total_tokens || '?'}`);
+    console.log(`[itinerary] ${duration}d × ${activitiesPerDay}act, tokens=${tokensNeeded}, finish=${finishReason}, len=${content?.length || 0}`);
     if (!content) return null;
 
     const parsed = JSON.parse(content);

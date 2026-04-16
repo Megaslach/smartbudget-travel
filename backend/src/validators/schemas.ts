@@ -41,6 +41,17 @@ export const simulationSchema = z.object({
 
 export const generateTripSchema = z.object({
   simulationId: z.string().uuid('ID de simulation invalide'),
+  activitiesPerDay: z.number().int().min(1).max(6).optional(),
+  tripPace: z.enum(['relaxed', 'balanced', 'packed']).optional(),
+  tripStyle: z.enum(['cultural', 'adventure', 'romantic', 'family', 'nightlife', 'wellness', 'gastronomic']).optional(),
+  interests: z.array(z.string()).optional(),
+  hasChildren: z.boolean().optional(),
+  hasAccessibilityNeeds: z.boolean().optional(),
+  dietaryPreferences: z.array(z.string()).optional(),
+  transportPreference: z.enum(['car', 'public', 'mixed', 'walk_bike']).optional(),
+  budgetLevel: z.enum(['budget', 'moderate', 'premium', 'luxury']).optional(),
+  avoidList: z.string().optional(),
+  mustSeeList: z.string().optional(),
 });
 
 export const compareSchema = z.object({

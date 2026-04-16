@@ -12,7 +12,12 @@ export const generateTrip = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
-    const { simulationId } = validation.data;
+    const {
+      simulationId, activitiesPerDay, tripPace, tripStyle,
+      interests, hasChildren, hasAccessibilityNeeds,
+      dietaryPreferences, transportPreference, budgetLevel,
+      avoidList, mustSeeList,
+    } = validation.data;
 
     const simulation = await prisma.simulation.findFirst({
       where: { id: simulationId, userId: req.userId },
@@ -29,6 +34,17 @@ export const generateTrip = async (req: AuthRequest, res: Response): Promise<voi
       endDate: simulation.endDate,
       duration: simulation.duration,
       people: simulation.people,
+      activitiesPerDay,
+      tripPace,
+      tripStyle,
+      interests,
+      hasChildren,
+      hasAccessibilityNeeds,
+      dietaryPreferences,
+      transportPreference,
+      budgetLevel,
+      avoidList,
+      mustSeeList,
     });
 
     if (!itinerary) {
