@@ -80,7 +80,7 @@ Retourne UNIQUEMENT ce JSON:
         { role: 'user', content: prompt },
       ],
       temperature: 0.4,
-      max_tokens: 800,
+      max_tokens: 1000,
     });
 
     const content = completion.choices[0]?.message?.content;

@@ -42,8 +42,8 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
 
     console.log(`[simulate] budget done in ${Date.now() - t0}ms`);
 
-    const remaining = Math.max(2000, 48000 - (Date.now() - t0));
-    const tipsTimeout = Math.min(remaining - 2000, 8000);
+    const remaining = Math.max(3000, 55000 - (Date.now() - t0));
+    const tipsTimeout = Math.min(remaining - 2000, 12000);
 
     const aiTips = await raceTimeout(
       generateSmartTips({
