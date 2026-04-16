@@ -230,15 +230,17 @@ async function searchFlightsCascade(input: SimulationInput): Promise<{
 
   const cascadeStart = Date.now();
   for (const p of providers) {
-    if (Date.now() - cascadeStart > 18000) break;
+    if (Date.now() - cascadeStart > 20000) break;
     try {
-      const remaining = Math.max(3000, 18000 - (Date.now() - cascadeStart));
-      const result = await withTimeout(p.fn(), Math.min(8000, remaining), `Flight:${p.name}`);
+      const remaining = Math.max(3000, 20000 - (Date.now() - cascadeStart));
+      const result = await withTimeout(p.fn(), Math.min(12000, remaining), `Flight:${p.name}`);
       if (result && result.flights && result.flights.length > 0) {
+        console.log(`[flights] ${p.name} returned ${result.flights.length} results in ${Date.now() - cascadeStart}ms`);
         return { flights: result.flights, source: p.name, originCode: result.originCode || '', destCode: result.destCode || '' };
       }
     } catch (err) { console.error(`${p.name} flight search failed:`, err); }
   }
+  console.log(`[flights] no provider returned results after ${Date.now() - cascadeStart}ms`);
   return { flights: null, source: null, originCode: '', destCode: '' };
 }
 
@@ -258,15 +260,17 @@ async function searchHotelsCascade(input: SimulationInput): Promise<{
 
   const cascadeStart = Date.now();
   for (const p of providers) {
-    if (Date.now() - cascadeStart > 18000) break;
+    if (Date.now() - cascadeStart > 20000) break;
     try {
-      const remaining = Math.max(3000, 18000 - (Date.now() - cascadeStart));
-      const result = await withTimeout(p.fn(), Math.min(8000, remaining), `Hotel:${p.name}`);
+      const remaining = Math.max(3000, 20000 - (Date.now() - cascadeStart));
+      const result = await withTimeout(p.fn(), Math.min(12000, remaining), `Hotel:${p.name}`);
       if (result && Array.isArray(result) && result.length > 0) {
+        console.log(`[hotels] ${p.name} returned ${result.length} results in ${Date.now() - cascadeStart}ms`);
         return { hotels: result, source: p.name };
       }
     } catch (err) { console.error(`${p.name} hotel search failed:`, err); }
   }
+  console.log(`[hotels] no provider returned results after ${Date.now() - cascadeStart}ms`);
   return { hotels: null, source: null };
 }
 

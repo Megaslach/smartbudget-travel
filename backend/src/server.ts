@@ -43,17 +43,7 @@ app.use('/api', destinationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    keys: {
-      serpapi: env.SERPAPI_KEY ? `${env.SERPAPI_KEY.length}c` : 'MISSING',
-      rapidapi: env.RAPIDAPI_KEY ? `${env.RAPIDAPI_KEY.length}c` : 'MISSING',
-      openai: env.OPENAI_API_KEY ? `${env.OPENAI_API_KEY.length}c` : 'MISSING',
-      amadeus: env.AMADEUS_CLIENT_ID ? `${env.AMADEUS_CLIENT_ID.length}c` : 'MISSING',
-      kiwi: env.KIWI_API_KEY ? `${env.KIWI_API_KEY.length}c` : 'MISSING',
-    },
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Serve frontend static files in production
