@@ -4,7 +4,6 @@ import { AuthRequest } from '../middleware/auth';
 import { simulationSchema } from '../validators/schemas';
 import { estimateBudget } from '../services/budgetService';
 import { generateSmartTips, AiTipsResult } from '../services/aiTipsService';
-import { generateItinerary } from '../services/itineraryService';
 
 const DEFAULT_TIPS: AiTipsResult = {
   tips: [
@@ -39,21 +38,11 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
 
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
 
-    const [budgetEstimate, itinerary] = await Promise.all([
-      estimateBudget({ destination, departureCity, startDate, endDate, duration, people, premiumFilters }),
-      generateItinerary({
-        destination,
-        startDate,
-        endDate,
-        duration,
-        people,
-        interests: premiumFilters?.interests,
-      }),
-    ]);
+    const budgetEstimate = await estimateBudget({ destination, departureCity, startDate, endDate, duration, people, premiumFilters });
 
-    console.log(`[simulate] budget+itinerary done in ${Date.now() - t0}ms`);
+    console.log(`[simulate] budget done in ${Date.now() - t0}ms`);
 
-    const remaining = Math.max(2000, 52000 - (Date.now() - t0));
+    const remaining = Math.max(2000, 48000 - (Date.now() - t0));
     const tipsTimeout = Math.min(remaining - 2000, 8000);
 
     const aiTips = await raceTimeout(
@@ -80,7 +69,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
         budget: budgetEstimate.total,
         budgetData: JSON.stringify(budgetEstimate),
         aiTips: JSON.stringify(aiTips),
-        itinerary: itinerary ? JSON.stringify(itinerary) : null,
+        itinerary: null,
       },
     });
 
@@ -97,7 +86,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
         people: simulation.people,
         budget: budgetEstimate,
         aiTips,
-        itinerary,
+        itinerary: null,
         createdAt: simulation.createdAt,
       },
     });
