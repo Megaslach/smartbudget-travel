@@ -204,156 +204,82 @@ function buildSearchUrls(input: SimulationInput, originCode?: string, destCode?:
   };
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => { console.log(`${label} timed out after ${ms}ms`); resolve(null); }, ms)),
+  ]);
+}
+
+async function searchFlightsCascade(input: SimulationInput): Promise<{
+  flights: Array<SerpApiFlightOffer | AmadeusFlightOffer | KiwiFlightOffer | RealFlightOffer> | null;
+  source: 'serpapi' | 'amadeus' | 'kiwi' | 'skyscanner' | null;
+  originCode: string;
+  destCode: string;
+}> {
+  const { departureCity, destination, startDate, endDate, people } = input;
+  const pf = input.premiumFilters;
+  const params = { departureCity, destination, startDate, endDate, people, flightClass: pf?.flightClass };
+
+  const providers: Array<{ fn: () => Promise<any>; name: 'serpapi' | 'amadeus' | 'kiwi' | 'skyscanner' }> = [
+    { fn: () => searchSerpApiFlights(params), name: 'serpapi' },
+    { fn: () => searchAmadeusFlights(params), name: 'amadeus' },
+    { fn: () => searchKiwiFlights(params), name: 'kiwi' },
+    { fn: () => searchRealFlights(params), name: 'skyscanner' },
+  ];
+
+  for (const p of providers) {
+    try {
+      const result = await withTimeout(p.fn(), 10000, `Flight:${p.name}`);
+      if (result && result.flights && result.flights.length > 0) {
+        return { flights: result.flights, source: p.name, originCode: result.originCode || '', destCode: result.destCode || '' };
+      }
+    } catch (err) { console.error(`${p.name} flight search failed:`, err); }
+  }
+  return { flights: null, source: null, originCode: '', destCode: '' };
+}
+
+async function searchHotelsCascade(input: SimulationInput): Promise<{
+  hotels: Array<SerpApiHotelOffer | AmadeusHotelOffer | RealHotelOffer> | null;
+  source: 'serpapi' | 'amadeus' | 'skyscanner' | null;
+}> {
+  const { destination, startDate, endDate, people } = input;
+  const pf = input.premiumFilters;
+  const params = { destination, startDate, endDate, people, accommodationType: pf?.accommodationType, accommodationArea: pf?.accommodationArea };
+
+  const providers: Array<{ fn: () => Promise<any>; name: 'serpapi' | 'amadeus' | 'skyscanner' }> = [
+    { fn: () => searchSerpApiHotels(params), name: 'serpapi' },
+    { fn: () => searchAmadeusHotels(params), name: 'amadeus' },
+    { fn: () => searchRealHotels(params), name: 'skyscanner' },
+  ];
+
+  for (const p of providers) {
+    try {
+      const result = await withTimeout(p.fn(), 10000, `Hotel:${p.name}`);
+      if (result && Array.isArray(result) && result.length > 0) {
+        return { hotels: result, source: p.name };
+      }
+    } catch (err) { console.error(`${p.name} hotel search failed:`, err); }
+  }
+  return { hotels: null, source: null };
+}
+
 export async function estimateBudget(input: SimulationInput): Promise<BudgetEstimate> {
   const { destination, departureCity, startDate, endDate, duration, people } = input;
   const pf = input.premiumFilters;
 
-  // ======== 1. REAL FLIGHTS (SerpApi → Amadeus → Kiwi → Sky Scrapper → AI) ========
-  let realFlights: Array<SerpApiFlightOffer | AmadeusFlightOffer | KiwiFlightOffer | RealFlightOffer> | null = null;
-  let flightSource: 'serpapi' | 'amadeus' | 'kiwi' | 'skyscanner' | null = null;
-  let originCode = '';
-  let destCode = '';
+  // ======== 1 & 2. REAL FLIGHTS + HOTELS IN PARALLEL ========
+  const [flightResult, hotelResult] = await Promise.all([
+    searchFlightsCascade(input),
+    searchHotelsCascade(input),
+  ]);
 
-  try {
-    const serpResult = await searchSerpApiFlights({
-      departureCity,
-      destination,
-      startDate,
-      endDate,
-      people,
-      flightClass: pf?.flightClass,
-    });
-    if (serpResult && serpResult.flights.length > 0) {
-      realFlights = serpResult.flights;
-      flightSource = 'serpapi';
-      originCode = serpResult.originCode;
-      destCode = serpResult.destCode;
-    }
-  } catch (err) {
-    console.error('SerpApi flight search failed:', err);
-  }
-
-  if (!realFlights) {
-    try {
-      const amadeusResult = await searchAmadeusFlights({
-        departureCity,
-        destination,
-        startDate,
-        endDate,
-        people,
-        flightClass: pf?.flightClass,
-      });
-      if (amadeusResult && amadeusResult.flights.length > 0) {
-        realFlights = amadeusResult.flights;
-        flightSource = 'amadeus';
-        originCode = amadeusResult.originCode;
-        destCode = amadeusResult.destCode;
-      }
-    } catch (err) {
-      console.error('Amadeus flight search failed:', err);
-    }
-  }
-
-  if (!realFlights) {
-    try {
-      const kiwiResult = await searchKiwiFlights({
-        departureCity,
-        destination,
-        startDate,
-        endDate,
-        people,
-        flightClass: pf?.flightClass,
-      });
-      if (kiwiResult && kiwiResult.flights.length > 0) {
-        realFlights = kiwiResult.flights;
-        flightSource = 'kiwi';
-        originCode = kiwiResult.originCode;
-        destCode = kiwiResult.destCode;
-      }
-    } catch (err) {
-      console.error('Kiwi flight search failed:', err);
-    }
-  }
-
-  if (!realFlights) {
-    try {
-      const flightResult = await searchRealFlights({
-        departureCity,
-        destination,
-        startDate,
-        endDate,
-        people,
-        flightClass: pf?.flightClass,
-      });
-      if (flightResult && flightResult.flights.length > 0) {
-        realFlights = flightResult.flights;
-        flightSource = 'skyscanner';
-        originCode = flightResult.originCode;
-        destCode = flightResult.destCode;
-      }
-    } catch (err) {
-      console.error('Sky Scrapper flight search failed:', err);
-    }
-  }
-
-  // ======== 2. REAL HOTELS (SerpApi → Amadeus → Sky Scrapper → AI) ========
-  let realHotels: Array<SerpApiHotelOffer | AmadeusHotelOffer | RealHotelOffer> | null = null;
-  let hotelSource: 'serpapi' | 'amadeus' | 'skyscanner' | null = null;
-
-  try {
-    const serpHotels = await searchSerpApiHotels({
-      destination,
-      startDate,
-      endDate,
-      people,
-      accommodationType: pf?.accommodationType,
-      accommodationArea: pf?.accommodationArea,
-    });
-    if (serpHotels && serpHotels.length > 0) {
-      realHotels = serpHotels;
-      hotelSource = 'serpapi';
-    }
-  } catch (err) {
-    console.error('SerpApi hotel search failed:', err);
-  }
-
-  if (!realHotels) {
-    try {
-      const amadeusHotels = await searchAmadeusHotels({
-        destination,
-        startDate,
-        endDate,
-        people,
-        accommodationType: pf?.accommodationType,
-        accommodationArea: pf?.accommodationArea,
-      });
-      if (amadeusHotels && amadeusHotels.length > 0) {
-        realHotels = amadeusHotels;
-        hotelSource = 'amadeus';
-      }
-    } catch (err) {
-      console.error('Amadeus hotel search failed:', err);
-    }
-  }
-
-  if (!realHotels) {
-    try {
-      const hotelResult = await searchRealHotels({
-        destination,
-        startDate,
-        endDate,
-        people,
-        accommodationType: pf?.accommodationType,
-        accommodationArea: pf?.accommodationArea,
-      });
-      if (hotelResult && hotelResult.length > 0) {
-        realHotels = hotelResult;
-        hotelSource = 'skyscanner';
-      }
-    } catch (err) {
-      console.error('Sky Scrapper hotel search failed:', err);
-    }
-  }
+  const realFlights = flightResult.flights;
+  const flightSource = flightResult.source;
+  const originCode = flightResult.originCode;
+  const destCode = flightResult.destCode;
+  const realHotels = hotelResult.hotels;
+  const hotelSource = hotelResult.source;
 
   const urls = buildSearchUrls(input, originCode, destCode);
 
