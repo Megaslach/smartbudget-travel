@@ -34,6 +34,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       });
     }
 
+    console.log('[stripe] CLIENT_URL:', env.CLIENT_URL, 'PRICE_ID:', env.STRIPE_PRICE_ID);
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
