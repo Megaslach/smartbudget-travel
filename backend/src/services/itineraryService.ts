@@ -89,15 +89,20 @@ Retourne UNIQUEMENT ce JSON :
         { role: 'user', content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 2500,
+      max_tokens: 3500,
       response_format: { type: 'json_object' },
     });
 
     const content = completion.choices[0]?.message?.content;
+    const finishReason = completion.choices[0]?.finish_reason;
+    console.log(`[itinerary] finish_reason=${finishReason}, content_length=${content?.length || 0}, tokens=${completion.usage?.total_tokens || '?'}`);
     if (!content) return null;
 
     const parsed = JSON.parse(content);
-    if (!parsed.days || !Array.isArray(parsed.days)) return null;
+    if (!parsed.days || !Array.isArray(parsed.days)) {
+      console.error('[itinerary] Invalid JSON structure:', Object.keys(parsed));
+      return null;
+    }
 
     return {
       destination,
