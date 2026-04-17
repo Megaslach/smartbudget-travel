@@ -213,8 +213,8 @@ export default function BudgetResultCard({ budget, destination, duration, people
                 const depTime = f.departureAt ? new Date(f.departureAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
                 const arrTime = f.arrivalAt ? new Date(f.arrivalAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
                 return (
-                  <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 bg-gradient-to-r from-sky-50/50 to-white rounded-xl border border-sky-100 p-4 hover:border-sky-300 hover:shadow-lg hover:shadow-sky-500/10 transition-all group">
-                    <div className="p-2 rounded-lg bg-sky-100 group-hover:bg-sky-200 transition-colors"><Plane className="h-5 w-5 text-sky-600" /></div>
+                  <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-sky-50/50 to-white rounded-xl border border-sky-100 p-3 sm:p-4 hover:border-sky-300 hover:shadow-lg hover:shadow-sky-500/10 transition-all group">
+                    <div className="p-2 rounded-lg bg-sky-100 group-hover:bg-sky-200 transition-colors shrink-0"><Plane className="h-5 w-5 text-sky-600" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 text-sm truncate">{f.airline}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
@@ -225,12 +225,12 @@ export default function BudgetResultCard({ budget, destination, duration, people
                         {f.duration && <span>{f.duration}</span>}
                       </div>
                     </div>
-                    <div className="text-right whitespace-nowrap">
-                      <p className="font-bold text-gray-900">{f.price.toLocaleString()}€<span className="text-xs text-gray-400 font-normal">/pers</span></p>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-gray-900 text-sm sm:text-base whitespace-nowrap">{f.price.toLocaleString()}€<span className="text-[10px] sm:text-xs text-gray-400 font-normal">/pers</span></p>
                       {people > 1 && (
-                        <p className="text-[10px] text-gray-400">total {(f.price * people).toLocaleString()}€ ({people} pers)</p>
+                        <p className="text-[10px] text-gray-400 whitespace-nowrap">× {people}</p>
                       )}
-                      <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+                      <span className="text-[10px] text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
                     </div>
                   </a>
                 );
@@ -259,7 +259,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
             <div className="grid gap-3">
               {budget.accommodation.options.map((h, i) => (
                 <a key={i} href={h.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-stretch gap-0 bg-white rounded-xl border border-indigo-100 overflow-hidden hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group">
-                  <div className="relative w-24 sm:w-32 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-indigo-50 overflow-hidden">
+                  <div className="relative w-20 sm:w-32 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-indigo-50 overflow-hidden">
                     {h.imageUrl ? (
                       <img src={h.imageUrl} alt={h.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
@@ -268,7 +268,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 flex items-center gap-3 p-4 min-w-0">
+                  <div className="flex-1 flex items-center gap-2 sm:gap-3 p-3 sm:p-4 min-w-0">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 text-sm truncate">{h.name}</p>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -278,10 +278,10 @@ export default function BudgetResultCard({ budget, destination, duration, people
                         ) : null}
                       </div>
                     </div>
-                    <div className="text-right whitespace-nowrap">
-                      <p className="font-bold text-gray-900">{h.pricePerNight}€<span className="text-xs text-gray-400 font-normal">/nuit</span></p>
-                      <p className="text-[10px] text-gray-400">total {(h.pricePerNight * duration).toLocaleString()}€ ({duration}n)</p>
-                      <span className="text-[10px] text-primary-500 group-hover:underline">Réserver →</span>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-gray-900 text-sm sm:text-base whitespace-nowrap">{h.pricePerNight}€<span className="text-[10px] sm:text-xs text-gray-400 font-normal">/nuit</span></p>
+                      <p className="text-[10px] text-gray-400 whitespace-nowrap">{duration}n · {(h.pricePerNight * duration).toLocaleString()}€</p>
+                      <span className="text-[10px] text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
                     </div>
                   </div>
                 </a>

@@ -134,7 +134,7 @@ export default function DateRangePicker({ startDate, endDate, onChange, error }:
             transition={{ duration: 0.18 }}
             className="absolute z-50 top-full mt-2 left-0 right-0 flex justify-center"
           >
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-2xl shadow-primary-900/10 p-4 w-[320px]">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-2xl shadow-primary-900/10 p-4 w-[min(320px,calc(100vw-32px))]">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 rounded-lg bg-gradient-to-br ${open === 'start' ? 'from-primary-500 to-primary-700' : 'from-accent-500 to-accent-700'} text-white`}>

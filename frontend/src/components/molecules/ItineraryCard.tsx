@@ -63,12 +63,12 @@ export default function ItineraryCard({ itinerary }: ItineraryCardProps) {
       </div>
 
       {/* Day tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 mb-5 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 sm:-mx-1 sm:px-1 mb-5 scrollbar-hide">
         {days.map((d, i) => (
           <button
             key={d.day}
             onClick={() => setActiveDay(i)}
-            className={`flex-shrink-0 px-4 py-2.5 rounded-xl border transition-all text-left min-w-[110px] ${
+            className={`flex-shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border transition-all text-left min-w-[90px] sm:min-w-[110px] ${
               activeDay === i
                 ? 'bg-primary-600 border-primary-600 text-white shadow-md shadow-primary-500/30'
                 : 'bg-white border-gray-200 text-gray-700 hover:border-primary-300 hover:bg-primary-50'
@@ -77,7 +77,7 @@ export default function ItineraryCard({ itinerary }: ItineraryCardProps) {
             <div className={`text-[10px] font-semibold uppercase tracking-wide ${activeDay === i ? 'text-primary-100' : 'text-gray-400'}`}>
               Jour {d.day}
             </div>
-            <div className="text-sm font-bold truncate max-w-[140px]">{d.title}</div>
+            <div className="text-xs sm:text-sm font-bold truncate max-w-[110px] sm:max-w-[140px]">{d.title}</div>
           </button>
         ))}
       </div>

@@ -56,7 +56,7 @@ export default function SimulationLoadingOverlay({ open }: SimulationLoadingOver
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 12 }}
             transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-            className="relative w-[92%] max-w-md rounded-3xl bg-white/95 backdrop-blur-sm shadow-2xl p-8 overflow-hidden"
+            className="relative w-[92%] max-w-md rounded-3xl bg-white/95 backdrop-blur-sm shadow-2xl p-6 sm:p-8 overflow-hidden"
           >
             {/* Globe-like rotating gradient ring */}
             <div className="relative mx-auto w-36 h-36 mb-6">
