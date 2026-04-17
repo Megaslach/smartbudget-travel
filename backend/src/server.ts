@@ -20,13 +20,15 @@ const allowedOrigins = [
   env.CLIENT_URL,
   'http://localhost:3000',
   'https://smartbudget-travel.netlify.app',
-];
+].filter(Boolean);
 app.use(
   cors({
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
       if (/^https:\/\/[a-z0-9-]+--smartbudget-travel\.netlify\.app$/.test(origin)) return cb(null, true);
+      if (/^https:\/\/.*\.railway\.app$/.test(origin)) return cb(null, true);
+      if (/^https:\/\/.*\.up\.railway\.app$/.test(origin)) return cb(null, true);
       return cb(null, false);
     },
     credentials: true,
