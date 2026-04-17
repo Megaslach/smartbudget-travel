@@ -246,9 +246,19 @@ export default function ProfilePage() {
                 <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100">
                   <div className="flex items-center gap-2 mb-2">
                     <Crown className="h-5 w-5 text-amber-600" />
-                    <span className="font-bold text-gray-900">Plan Premium actif</span>
+                    <span className="font-bold text-gray-900">
+                      {user.premiumPlan === 'annual' ? 'Plan Annuel actif' : user.premiumPlan === 'oneshot' ? 'Plan 1 voyage actif' : 'Plan Premium actif'}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-600">Tu bénéficies de toutes les fonctionnalités avancées : IA illimitée, itinéraires détaillés, filtres premium, suivi des prix, export PDF.</p>
+                  <p className="text-sm text-gray-600 mb-2">Tu bénéficies de toutes les fonctionnalités avancées : IA illimitée, itinéraires détaillés, filtres premium, suivi des prix, export PDF.</p>
+                  {user.premiumUntil && (
+                    <p className="text-xs text-amber-700 font-medium">
+                      {(() => {
+                        const expiry = new Date(user.premiumUntil);
+                        return `Accès valable jusqu'au ${expiry.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+                      })()}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">

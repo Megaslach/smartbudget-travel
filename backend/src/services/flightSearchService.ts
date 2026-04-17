@@ -1,5 +1,6 @@
 import { env } from '../config/env';
 import { cities } from '../data/airports';
+import { withSkyscannerAffiliate } from '../config/affiliates';
 
 export interface RealFlightOffer {
   airline: string;
@@ -33,7 +34,7 @@ function resolveIataCode(cityInput: string): string | null {
 
 function buildSkyscannerLink(originCode: string, destCode: string, departDate: string, returnDate: string, adults: number, cabin: string): string {
   const fmt = (d: string) => d.replace(/-/g, '').slice(2);
-  return `https://www.skyscanner.fr/transport/vols/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${fmt(departDate)}/${fmt(returnDate)}/?adultes=${adults}&cabineclass=${cabin}`;
+  return withSkyscannerAffiliate(`https://www.skyscanner.fr/transport/vols/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${fmt(departDate)}/${fmt(returnDate)}/?adultes=${adults}&cabineclass=${cabin}`);
 }
 
 async function rapidApiFetch(url: string): Promise<any> {

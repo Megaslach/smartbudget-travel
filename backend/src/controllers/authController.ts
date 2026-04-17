@@ -4,9 +4,28 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma';
 import { env } from '../config/env';
 import { registerSchema, loginSchema } from '../validators/schemas';
+import { isPremiumActive } from '../middleware/premiumGuard';
 
 function generateToken(userId: string): string {
   return jwt.sign({ userId }, env.JWT_SECRET, { expiresIn: '7d' });
+}
+
+function serializeUser(user: {
+  id: string;
+  email: string;
+  isPremium: boolean;
+  premiumUntil?: Date | null;
+  premiumPlan?: string | null;
+  createdAt?: Date;
+}) {
+  return {
+    id: user.id,
+    email: user.email,
+    isPremium: isPremiumActive({ isPremium: user.isPremium, premiumUntil: user.premiumUntil ?? null }),
+    premiumUntil: user.premiumUntil ?? null,
+    premiumPlan: user.premiumPlan ?? null,
+    ...(user.createdAt ? { createdAt: user.createdAt } : {}),
+  };
 }
 
 export const register = async (req: Request, res: Response): Promise<void> => {
@@ -34,7 +53,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email, isPremium: user.isPremium },
+      user: serializeUser(user),
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -68,7 +87,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, isPremium: user.isPremium },
+      user: serializeUser(user),
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -80,7 +99,7 @@ export const getMe = async (req: Request & { userId?: string }, res: Response): 
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
-      select: { id: true, email: true, isPremium: true, createdAt: true },
+      select: { id: true, email: true, isPremium: true, premiumUntil: true, premiumPlan: true, createdAt: true },
     });
 
     if (!user) {
@@ -88,7 +107,7 @@ export const getMe = async (req: Request & { userId?: string }, res: Response): 
       return;
     }
 
-    res.json({ user });
+    res.json({ user: serializeUser(user) });
   } catch (error) {
     console.error('GetMe error:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -130,17 +149,17 @@ export const updateProfile = async (req: Request & { userId?: string }, res: Res
     }
 
     if (Object.keys(updates).length === 0) {
-      res.json({ user: { id: user.id, email: user.email, isPremium: user.isPremium, createdAt: user.createdAt } });
+      res.json({ user: serializeUser(user) });
       return;
     }
 
     const updated = await prisma.user.update({
       where: { id: req.userId },
       data: updates,
-      select: { id: true, email: true, isPremium: true, createdAt: true },
+      select: { id: true, email: true, isPremium: true, premiumUntil: true, premiumPlan: true, createdAt: true },
     });
 
-    res.json({ user: updated });
+    res.json({ user: serializeUser(updated) });
   } catch (error) {
     console.error('UpdateProfile error:', error);
     res.status(500).json({ error: 'Erreur serveur' });

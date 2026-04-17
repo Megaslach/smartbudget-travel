@@ -9,22 +9,28 @@ interface PricingCardProps {
   title: string;
   price: string;
   period?: string;
+  subtitle?: string;
+  badge?: string;
   features: string[];
   isPremium?: boolean;
   ctaLabel: string;
   onCtaClick: () => void;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export default function PricingCard({
   title,
   price,
   period,
+  subtitle,
+  badge,
   features,
   isPremium = false,
   ctaLabel,
   onCtaClick,
   isLoading,
+  disabled,
 }: PricingCardProps) {
   return (
     <motion.div
@@ -39,9 +45,9 @@ export default function PricingCard({
         }
       `}
     >
-      {isPremium && (
+      {badge && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge variant="premium">Recommandé</Badge>
+          <Badge variant="premium">{badge}</Badge>
         </div>
       )}
 
@@ -51,6 +57,9 @@ export default function PricingCard({
           <span className="text-5xl font-extrabold text-gray-900">{price}</span>
           {period && <span className="text-gray-500 text-sm">/{period}</span>}
         </div>
+        {subtitle && (
+          <p className="text-xs text-gray-500 mt-2">{subtitle}</p>
+        )}
       </div>
 
       <ul className="space-y-3 mb-8">
@@ -68,6 +77,7 @@ export default function PricingCard({
         className="w-full"
         onClick={onCtaClick}
         isLoading={isLoading}
+        disabled={disabled}
       >
         {ctaLabel}
       </Button>

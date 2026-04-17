@@ -177,8 +177,30 @@ export default function DashboardPanel() {
             <div>
               <p className="text-xs text-gray-500">Statut</p>
               <Badge variant={user?.isPremium ? 'premium' : 'default'}>
-                {user?.isPremium ? 'Premium' : 'Gratuit'}
+                {user?.isPremium
+                  ? user?.premiumPlan === 'annual' ? 'Premium annuel' : 'Premium'
+                  : 'Gratuit'}
               </Badge>
+              {user?.isPremium && user?.premiumUntil && (
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {(() => {
+                    const expiry = new Date(user.premiumUntil);
+                    const now = new Date();
+                    const days = Math.max(0, Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+                    return days > 0
+                      ? `Expire dans ${days} jour${days > 1 ? 's' : ''}`
+                      : 'Expiré';
+                  })()}
+                </p>
+              )}
+              {!user?.isPremium && (
+                <button
+                  onClick={() => router.push('/pricing')}
+                  className="text-[11px] text-primary-600 hover:underline mt-1 cursor-pointer"
+                >
+                  Passer Premium →
+                </button>
+              )}
             </div>
           </div>
         </Card>

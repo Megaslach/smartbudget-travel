@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth';
 import { simulationSchema } from '../validators/schemas';
 import { estimateBudget } from '../services/budgetService';
 import { generateSmartTips, AiTipsResult } from '../services/aiTipsService';
+import { isPremiumActive } from '../middleware/premiumGuard';
 
 const DEFAULT_TIPS: AiTipsResult = {
   tips: [
@@ -49,7 +50,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       generateSmartTips({
         destination, departureCity, startDate, endDate, duration, people,
         budget: budgetEstimate,
-        isPremium: user?.isPremium ?? false,
+        isPremium: user ? isPremiumActive(user) : false,
       }),
       tipsTimeout,
       DEFAULT_TIPS,

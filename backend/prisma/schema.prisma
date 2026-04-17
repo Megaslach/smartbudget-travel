@@ -12,6 +12,8 @@ model User {
   email          String                   @unique
   password       String
   isPremium      Boolean                  @default(false)
+  premiumUntil   DateTime?
+  premiumPlan    String?
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
   simulations    Simulation[]

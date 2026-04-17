@@ -6,6 +6,7 @@ import { searchAmadeusHotels, AmadeusHotelOffer } from './amadeusHotelService';
 import { searchRealFlights, RealFlightOffer } from './flightSearchService';
 import { searchKiwiFlights, KiwiFlightOffer } from './kiwiFlightService';
 import { searchRealHotels, RealHotelOffer } from './hotelSearchService';
+import { withAffiliate } from '../config/affiliates';
 
 export interface FlightOption {
   airline: string;
@@ -145,7 +146,7 @@ function buildActivityUrl(activityName: string, destination: string): string {
   // Deep search per activity: GetYourGuide query combining name + destination
   // This lands on a pre-filled search page with the specific activity
   const query = encodeURIComponent(`${activityName} ${destination}`);
-  return `https://www.getyourguide.fr/s/?q=${query}`;
+  return withAffiliate(`https://www.getyourguide.fr/s/?q=${query}`);
 }
 
 function buildActivityImageUrl(activityName: string, destination: string): string {
@@ -195,11 +196,11 @@ function buildSearchUrls(input: SimulationInput, originCode?: string, destCode?:
     : `https://www.skyscanner.fr/transport/vols/${encodeURIComponent(departureCity)}/${destEnc}/${sd}/${ed}/`;
 
   return {
-    skyscanner,
+    skyscanner: withAffiliate(skyscanner),
     googleFlights: `https://www.google.com/travel/flights?q=Flights+from+${encodeURIComponent(departureCity)}+to+${destEnc}+on+${startDate}+return+${endDate}`,
-    booking: `https://www.booking.com/searchresults.fr.html?ss=${accomEnc}&checkin=${startDate}&checkout=${endDate}&group_adults=${people}`,
+    booking: withAffiliate(`https://www.booking.com/searchresults.fr.html?ss=${accomEnc}&checkin=${startDate}&checkout=${endDate}&group_adults=${people}`),
     airbnb: `https://www.airbnb.fr/s/${accomEnc}/homes?checkin=${startDate}&checkout=${endDate}&adults=${people}`,
-    getyourguide: `https://www.getyourguide.fr/s/?q=${destEnc}`,
+    getyourguide: withAffiliate(`https://www.getyourguide.fr/s/?q=${destEnc}`),
     kayakCars: `https://www.kayak.fr/cars/${destEnc}/${startDate}/${endDate}`,
   };
 }

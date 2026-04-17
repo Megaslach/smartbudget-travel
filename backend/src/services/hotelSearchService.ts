@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { withBookingAffiliate } from '../config/affiliates';
 
 export interface RealHotelOffer {
   hotelName: string;
@@ -51,7 +52,7 @@ async function resolveHotelEntity(query: string): Promise<{ entityId: string; de
 // ---- Step 2: search hotels ----
 
 function buildBookingLink(hotelName: string, destination: string, checkIn: string, checkOut: string, adults: number): string {
-  return `https://www.booking.com/searchresults.fr.html?ss=${encodeURIComponent(hotelName + ' ' + destination)}&checkin=${checkIn}&checkout=${checkOut}&group_adults=${adults}&no_rooms=1`;
+  return withBookingAffiliate(`https://www.booking.com/searchresults.fr.html?ss=${encodeURIComponent(hotelName + ' ' + destination)}&checkin=${checkIn}&checkout=${checkOut}&group_adults=${adults}&no_rooms=1`);
 }
 
 export async function searchRealHotels(params: {

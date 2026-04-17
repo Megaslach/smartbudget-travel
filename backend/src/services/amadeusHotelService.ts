@@ -1,5 +1,6 @@
 import { getAmadeus } from '../config/amadeus';
 import { cities } from '../data/airports';
+import { withBookingAffiliate } from '../config/affiliates';
 
 export interface AmadeusHotelOffer {
   hotelName: string;
@@ -30,7 +31,7 @@ function resolveCityCode(cityInput: string): string | null {
 
 function buildBookingLink(hotelName: string, destination: string, checkIn: string, checkOut: string, adults: number): string {
   const destEnc = encodeURIComponent(destination);
-  return `https://www.booking.com/searchresults.fr.html?ss=${encodeURIComponent(hotelName)}+${destEnc}&checkin=${checkIn}&checkout=${checkOut}&group_adults=${adults}&no_rooms=1`;
+  return withBookingAffiliate(`https://www.booking.com/searchresults.fr.html?ss=${encodeURIComponent(hotelName)}+${destEnc}&checkin=${checkIn}&checkout=${checkOut}&group_adults=${adults}&no_rooms=1`);
 }
 
 export async function searchAmadeusHotels(params: {

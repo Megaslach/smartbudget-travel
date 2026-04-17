@@ -2,6 +2,8 @@ export interface User {
   id: string;
   email: string;
   isPremium: boolean;
+  premiumUntil?: string | null;
+  premiumPlan?: 'oneshot' | 'annual' | null;
   createdAt?: string;
 }
 

@@ -4,6 +4,26 @@ import { env } from '../config/env';
 import prisma from '../config/prisma';
 import { AuthRequest } from '../middleware/auth';
 
+type Plan = 'oneshot' | 'annual';
+
+const getPriceIdForPlan = (plan: Plan): string => {
+  if (plan === 'oneshot') return env.STRIPE_PRICE_ID_ONESHOT;
+  if (plan === 'annual') return env.STRIPE_PRICE_ID_ANNUAL;
+  throw new Error(`Plan inconnu: ${plan}`);
+};
+
+const addDays = (date: Date, days: number): Date => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+const computePremiumUntil = (plan: Plan, from: Date = new Date()): Date => {
+  if (plan === 'oneshot') return addDays(from, 30);
+  if (plan === 'annual') return addDays(from, 365);
+  throw new Error(`Plan inconnu: ${plan}`);
+};
+
 export const createCheckoutSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
@@ -12,8 +32,22 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    if (user.isPremium) {
-      res.status(400).json({ error: 'Vous êtes déjà premium' });
+    const plan = (req.body?.plan as Plan) || 'oneshot';
+    if (plan !== 'oneshot' && plan !== 'annual') {
+      res.status(400).json({ error: 'Plan invalide. Attendu: oneshot | annual' });
+      return;
+    }
+
+    const priceId = getPriceIdForPlan(plan);
+    if (!priceId) {
+      res.status(500).json({ error: `STRIPE_PRICE_ID_${plan.toUpperCase()} non configure` });
+      return;
+    }
+
+    const now = new Date();
+    const isCurrentlyPremium = user.premiumUntil && user.premiumUntil > now;
+    if (isCurrentlyPremium && plan === 'annual') {
+      res.status(400).json({ error: 'Vous avez deja un abonnement annuel actif' });
       return;
     }
 
@@ -34,19 +68,16 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
       });
     }
 
+    const mode: 'payment' | 'subscription' = plan === 'oneshot' ? 'payment' : 'subscription';
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: env.STRIPE_PRICE_ID,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: `${env.CLIENT_URL}/dashboard?upgraded=true`,
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode,
+      success_url: `${env.CLIENT_URL}/dashboard?upgraded=true&plan=${plan}`,
       cancel_url: `${env.CLIENT_URL}/pricing?cancelled=true`,
-      metadata: { userId: user.id },
+      metadata: { userId: user.id, plan },
     });
 
     res.json({ url: session.url });
@@ -64,22 +95,56 @@ export const handleWebhook = async (req: Request, res: Response): Promise<void> 
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as { metadata?: { userId?: string }; subscription?: string };
+        const session = event.data.object as {
+          metadata?: { userId?: string; plan?: string };
+          subscription?: string;
+          mode?: string;
+        };
         const userId = session.metadata?.userId;
+        const plan = (session.metadata?.plan as Plan) || 'oneshot';
 
         if (userId) {
+          const premiumUntil = computePremiumUntil(plan);
+
           await prisma.user.update({
             where: { id: userId },
-            data: { isPremium: true },
+            data: {
+              isPremium: true,
+              premiumUntil,
+              premiumPlan: plan,
+            },
           });
 
           await prisma.subscription.update({
             where: { userId },
             data: {
               status: 'active',
-              stripeSubscriptionId: session.subscription as string,
+              stripeSubscriptionId: (session.subscription as string) || null,
             },
           });
+        }
+        break;
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as { subscription?: string; customer?: string };
+        if (invoice.subscription) {
+          const sub = await prisma.subscription.findFirst({
+            where: { stripeSubscriptionId: invoice.subscription },
+          });
+          if (sub) {
+            const user = await prisma.user.findUnique({ where: { id: sub.userId } });
+            const plan = (user?.premiumPlan as Plan) || 'annual';
+            const premiumUntil = computePremiumUntil(plan);
+            await prisma.user.update({
+              where: { id: sub.userId },
+              data: { isPremium: true, premiumUntil },
+            });
+            await prisma.subscription.update({
+              where: { id: sub.id },
+              data: { status: 'active' },
+            });
+          }
         }
         break;
       }
@@ -93,7 +158,7 @@ export const handleWebhook = async (req: Request, res: Response): Promise<void> 
         if (sub) {
           await prisma.user.update({
             where: { id: sub.userId },
-            data: { isPremium: false },
+            data: { isPremium: false, premiumUntil: null, premiumPlan: null },
           });
 
           await prisma.subscription.update({

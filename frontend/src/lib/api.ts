@@ -127,9 +127,10 @@ class ApiClient {
   }
 
   // Stripe
-  async createCheckoutSession(): Promise<{ url: string }> {
+  async createCheckoutSession(plan: 'oneshot' | 'annual' = 'oneshot'): Promise<{ url: string }> {
     return this.request('/create-checkout-session', {
       method: 'POST',
+      body: JSON.stringify({ plan }),
     });
   }
 
