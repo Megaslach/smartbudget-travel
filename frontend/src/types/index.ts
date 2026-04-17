@@ -116,6 +116,22 @@ export interface PremiumFilters {
   hasAccessibilityNeeds?: boolean;
 }
 
+export type AddonCategory = 'esim' | 'insurance' | 'transfer' | 'fork';
+
+export interface AddonOption {
+  id: string;
+  category: AddonCategory;
+  provider: string;
+  name: string;
+  description: string;
+  price: number;
+  priceLabel?: string;
+  bookingUrl: string;
+  features: string[];
+  icon: string;
+  recommended?: boolean;
+}
+
 export interface BudgetEstimate {
   flights: FlightEstimate;
   accommodation: AccommodationEstimate;
@@ -123,6 +139,7 @@ export interface BudgetEstimate {
   transport: number;
   localTransport?: LocalTransportEstimate;
   activities: ActivitiesEstimate;
+  addons?: AddonOption[];
   total: number;
   currency: string;
   confidence: 'high' | 'medium' | 'low';

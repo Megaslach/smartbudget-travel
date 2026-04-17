@@ -3,10 +3,12 @@ import { searchSerpApiFlights, SerpApiFlightOffer } from './serpapiFlightService
 import { searchSerpApiHotels, SerpApiHotelOffer } from './serpapiHotelService';
 import { searchAmadeusFlights, AmadeusFlightOffer } from './amadeusFlightService';
 import { searchAmadeusHotels, AmadeusHotelOffer } from './amadeusHotelService';
+import { searchHotellookHotels, HotellookHotelOffer } from './hotellookService';
 import { searchRealFlights, RealFlightOffer } from './flightSearchService';
 import { searchKiwiFlights, KiwiFlightOffer } from './kiwiFlightService';
 import { searchRealHotels, RealHotelOffer } from './hotelSearchService';
 import { withAffiliate } from '../config/affiliates';
+import { generateAddons, AddonOption } from './addonsService';
 
 export interface FlightOption {
   airline: string;
@@ -103,6 +105,7 @@ export interface BudgetEstimate {
   transport: number;
   localTransport?: LocalTransportEstimate;
   activities: ActivitiesEstimate;
+  addons?: AddonOption[];
   total: number;
   currency: string;
   confidence: 'high' | 'medium' | 'low';
@@ -246,15 +249,16 @@ async function searchFlightsCascade(input: SimulationInput): Promise<{
 }
 
 async function searchHotelsCascade(input: SimulationInput): Promise<{
-  hotels: Array<SerpApiHotelOffer | AmadeusHotelOffer | RealHotelOffer> | null;
-  source: 'serpapi' | 'amadeus' | 'skyscanner' | null;
+  hotels: Array<SerpApiHotelOffer | AmadeusHotelOffer | HotellookHotelOffer | RealHotelOffer> | null;
+  source: 'serpapi' | 'amadeus' | 'hotellook' | 'skyscanner' | null;
 }> {
   const { destination, startDate, endDate, people } = input;
   const pf = input.premiumFilters;
   const params = { destination, startDate, endDate, people, accommodationType: pf?.accommodationType, accommodationArea: pf?.accommodationArea };
 
-  const providers: Array<{ fn: () => Promise<any>; name: 'serpapi' | 'amadeus' | 'skyscanner' }> = [
+  const providers: Array<{ fn: () => Promise<any>; name: 'serpapi' | 'amadeus' | 'hotellook' | 'skyscanner' }> = [
     { fn: () => searchSerpApiHotels(params), name: 'serpapi' },
+    { fn: () => searchHotellookHotels(params), name: 'hotellook' },
     { fn: () => searchAmadeusHotels(params), name: 'amadeus' },
     { fn: () => searchRealHotels(params), name: 'skyscanner' },
   ];
@@ -308,13 +312,13 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
       avgPrice: Math.round(realFlights[0].price),
       source: sourceLabel,
       note: `${realFlights.length} vols trouvés pour ${startDate}. Prix par personne A/R.`,
-      searchUrl: (flightSource === 'kiwi' || flightSource === 'serpapi') ? (realFlights[0].bookingUrl || urls.skyscanner) : urls.skyscanner,
+      searchUrl: withAffiliate((flightSource === 'kiwi' || flightSource === 'serpapi') ? (realFlights[0].bookingUrl || urls.skyscanner) : urls.skyscanner),
       isRealData: true,
       options: realFlights.slice(0, 5).map((f) => ({
         airline: `${f.airlineName}`,
         price: Math.round(f.price),
         type: f.stops === 0 ? 'Vol direct' : `${f.stops} escale${f.stops > 1 ? 's' : ''}`,
-        bookingUrl: f.bookingUrl,
+        bookingUrl: withAffiliate(f.bookingUrl),
         departureAt: f.departureAt,
         arrivalAt: f.arrivalAt,
         duration: f.duration,
@@ -334,20 +338,21 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
     const total = avgPerNight * duration;
     const hotelSourceLabel = hotelSource === 'serpapi' ? 'Google Hotels — Prix réels'
       : hotelSource === 'amadeus' ? 'Amadeus — Prix réels'
+      : hotelSource === 'hotellook' ? 'Hotellook — Prix réels'
       : 'Skyscanner — Prix réels';
     accommodation = {
       avgPerNight,
       total,
       source: hotelSourceLabel,
       note: `${realHotels.length} hébergements trouvés. Prix par nuit.`,
-      searchUrl: urls.booking,
+      searchUrl: withAffiliate(urls.booking),
       isRealData: true,
       options: realHotels.map((h) => ({
         name: h.hotelName,
         type: `${h.rating > 0 ? h.rating + '★' : 'Hôtel'}`,
         pricePerNight: h.pricePerNight,
         rating: h.rating || 0,
-        bookingUrl: h.bookingUrl,
+        bookingUrl: withAffiliate(h.bookingUrl),
         totalPrice: h.totalPrice,
         roomType: h.roomType,
         isRealData: true,
@@ -382,6 +387,8 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
   if (accommodation.isRealData) dataSources.push(`hôtels réels (${hotelSrcName})`);
   if (!flights.isRealData || !accommodation.isRealData) dataSources.push('estimation IA');
 
+  const addons = generateAddons({ destination, duration, people });
+
   return {
     flights,
     accommodation,
@@ -389,6 +396,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
     transport: aiData.transport,
     localTransport: aiData.localTransport,
     activities,
+    addons,
     total,
     currency: 'EUR',
     confidence,

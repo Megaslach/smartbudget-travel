@@ -36,6 +36,32 @@ export const withRentalcarsAffiliate = (url: string): string => {
   return appendParams(url, { affiliateCode: env.RENTALCARS_AFFILIATE_ID });
 };
 
+/**
+ * TravelPayouts marker-based affiliation.
+ * Every link routed through the TP network picks up the `marker` param,
+ * which TP uses to credit commissions across Hotellook, Aviasales, Trip.com,
+ * Kiwi, etc. Used both for their direct search URLs and for wrapping
+ * partner URLs via the TP redirect.
+ */
+export const withTravelPayoutsMarker = (url: string): string => {
+  if (!env.TRAVELPAYOUTS_MARKER) return url;
+  return appendParams(url, { marker: env.TRAVELPAYOUTS_MARKER });
+};
+
+/**
+ * Wraps an external partner URL through TravelPayouts' redirect so the
+ * commission is tracked. Falls back to the raw URL when the marker is not
+ * configured yet.
+ */
+export const throughTravelPayouts = (partnerUrl: string): string => {
+  if (!env.TRAVELPAYOUTS_MARKER) return partnerUrl;
+  return `https://tp.media/r?marker=${encodeURIComponent(env.TRAVELPAYOUTS_MARKER)}&u=${encodeURIComponent(partnerUrl)}`;
+};
+
+export const withTheForkAffiliate = (url: string): string => {
+  return withTravelPayoutsMarker(url);
+};
+
 export const withAffiliate = (url: string): string => {
   try {
     const host = new URL(url).hostname.toLowerCase();
@@ -43,6 +69,8 @@ export const withAffiliate = (url: string): string => {
     if (host.includes('skyscanner')) return withSkyscannerAffiliate(url);
     if (host.includes('getyourguide')) return withGetYourGuideAffiliate(url);
     if (host.includes('rentalcars')) return withRentalcarsAffiliate(url);
+    if (host.includes('hotellook') || host.includes('aviasales') || host.includes('tp.media')) return withTravelPayoutsMarker(url);
+    if (host.includes('thefork')) return withTheForkAffiliate(url);
     return url;
   } catch {
     return url;

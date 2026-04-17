@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { BudgetEstimate } from '@/types';
+import { BudgetEstimate, AddonCategory } from '@/types';
 import Card from '@/components/atoms/Card';
-import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle, Car, Train, MapPin } from 'lucide-react';
+import AddonsCard from '@/components/molecules/AddonsCard';
+import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle, Car, Train, MapPin, Sparkles } from 'lucide-react';
 
 interface BudgetResultCardProps {
   budget: BudgetEstimate;
@@ -19,6 +20,7 @@ const confidenceLabels = { high: 'Fiabilité haute', medium: 'Fiabilité moyenne
 export default function BudgetResultCard({ budget, destination, duration, people }: BudgetResultCardProps) {
   const [transportMode, setTransportMode] = useState<'public' | 'car'>('public');
   const [selectedCarIndex, setSelectedCarIndex] = useState<number>(0);
+  const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(new Set());
 
   const flightsTotal = budget.flights.avgPrice * people;
   const activitiesTotal = typeof budget.activities === 'object' ? budget.activities.total : budget.activities;
@@ -28,8 +30,33 @@ export default function BudgetResultCard({ budget, destination, duration, people
   const carOptions = budget.localTransport?.carRentals.options || [];
   const selectedCar = transportMode === 'car' && carOptions.length > 0 ? carOptions[Math.min(selectedCarIndex, carOptions.length - 1)] : null;
   const effectiveTransport = selectedCar ? selectedCar.totalPrice : budget.transport;
-  const effectiveTotal = budget.total - budget.transport + effectiveTransport;
+
+  const addons = budget.addons || [];
+  const selectedAddons = useMemo(
+    () => addons.filter((a) => selectedAddonIds.has(a.id)),
+    [addons, selectedAddonIds],
+  );
+  const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
+
+  const effectiveTotal = budget.total - budget.transport + effectiveTransport + addonsTotal;
   const totalPerPerson = perPerson(effectiveTotal);
+
+  const handleToggleAddon = (id: string, category: AddonCategory) => {
+    setSelectedAddonIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        return next;
+      }
+      if (category === 'esim' || category === 'insurance') {
+        addons
+          .filter((a) => a.category === category && a.id !== id)
+          .forEach((a) => next.delete(a.id));
+      }
+      next.add(id);
+      return next;
+    });
+  };
 
   const summaryCategories = [
     { label: 'Vols A/R', value: flightsTotal, perPerson: budget.flights.avgPrice, icon: Plane, color: 'text-sky-500', bg: 'bg-sky-50', hint: `${budget.flights.avgPrice.toLocaleString()}€/pers × ${people}` },
@@ -45,6 +72,17 @@ export default function BudgetResultCard({ budget, destination, duration, people
       hint: selectedCar ? `${selectedCar.provider} · ${selectedCar.category}` : 'transports en commun',
     },
     { label: 'Activités', value: activitiesTotal, perPerson: perPerson(activitiesTotal), icon: Ticket, color: 'text-purple-500', bg: 'bg-purple-50', hint: `pour ${people} pers` },
+    ...(addonsTotal > 0
+      ? [{
+          label: 'Options ajoutées',
+          value: addonsTotal,
+          perPerson: perPerson(addonsTotal),
+          icon: Sparkles,
+          color: 'text-primary-500',
+          bg: 'bg-primary-50',
+          hint: selectedAddons.map((a) => a.name).join(' · '),
+        }]
+      : []),
   ];
 
   return (
@@ -128,7 +166,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
         <div className="space-y-2.5 mt-4">
           {summaryCategories.map((cat, i) => {
             const Icon = cat.icon;
-            const pct = Math.round((cat.value / budget.total) * 100);
+            const pct = effectiveTotal > 0 ? Math.round((cat.value / effectiveTotal) * 100) : 0;
             return (
               <motion.div key={cat.label} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl ${cat.bg} ${cat.color}`}><Icon className="h-4 w-4" /></div>
@@ -425,6 +463,13 @@ export default function BudgetResultCard({ budget, destination, duration, people
           </Card>
         </motion.div>
       )}
+
+      {/* Add-ons optionnels (eSIM, assurance, transfert, restaurants) */}
+      <AddonsCard
+        addons={addons}
+        selectedIds={selectedAddonIds}
+        onToggle={handleToggleAddon}
+      />
 
       {/* Activités */}
       {typeof budget.activities === 'object' && budget.activities.options && budget.activities.options.length > 0 && (
