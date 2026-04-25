@@ -156,6 +156,12 @@ export class ApiClient {
     });
   }
 
+  createPortalSession(): Promise<{ url: string }> {
+    return this.request('/create-portal-session', {
+      method: 'POST',
+    });
+  }
+
   // Comparator
   compareDestinations(data: {
     destinations: string[]; departureCity: string;

@@ -3,7 +3,7 @@ import {
   ScrollView, View, Text, StyleSheet, ActivityIndicator, Pressable,
   Linking, Image, Alert, Share, ImageBackground,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
@@ -28,6 +28,7 @@ const WEB_BASE = 'https://smartbudget-travel.netlify.app';
 
 export default function SimulationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { user } = useAuth();
   const [sim, setSim] = useState<Simulation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +72,11 @@ export default function SimulationDetail() {
     if (!user?.isPremium) {
       Alert.alert(
         'Premium requis',
-        'La génération d’itinéraire est une fonctionnalité Premium. Passe Premium depuis ton profil.',
+        'La génération d’itinéraire est une fonctionnalité Premium.',
+        [
+          { text: 'Plus tard', style: 'cancel' },
+          { text: 'Voir Premium', onPress: () => router.push('/subscription/index' as any) },
+        ],
       );
       return;
     }

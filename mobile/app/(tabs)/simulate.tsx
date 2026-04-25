@@ -68,7 +68,11 @@ export default function SimulateScreen() {
     if (!user?.isPremium) {
       Alert.alert(
         'Premium requis',
-        'Les filtres avancés sont une fonctionnalité Premium. Passe Premium depuis ton profil.',
+        'Les filtres avancés sont une fonctionnalité Premium.',
+        [
+          { text: 'Plus tard', style: 'cancel' },
+          { text: 'Voir Premium', onPress: () => router.push('/subscription/index' as any) },
+        ],
       );
       return;
     }

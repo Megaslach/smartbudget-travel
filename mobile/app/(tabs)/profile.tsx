@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, View, Text, StyleSheet, Pressable, Alert, Linking, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/Card';
@@ -12,19 +13,11 @@ import { colors, fontSize, radius, spacing } from '../../lib/theme';
 type ModalType = null | 'email' | 'password';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
   const [modal, setModal] = useState<ModalType>(null);
 
   const initials = user?.email?.[0]?.toUpperCase() ?? '?';
-
-  const handleUpgrade = async (plan: 'oneshot' | 'annual') => {
-    try {
-      const { url } = await api.createCheckoutSession(plan);
-      Linking.openURL(url);
-    } catch (err: any) {
-      Alert.alert('Erreur', err?.error || 'Impossible d’ouvrir le paiement');
-    }
-  };
 
   const handleLogout = () => {
     Alert.alert('Déconnexion', 'Es-tu sûr de vouloir te déconnecter ?', [
@@ -73,22 +66,27 @@ export default function ProfileScreen() {
           </Text>
         </Card>
 
-        {!user?.isPremium && (
-          <Card style={styles.upgradeCard}>
-            <Text style={styles.upgradeTitle}>Passe à Premium</Text>
-            <Text style={styles.upgradeDesc}>
-              Itinéraire IA personnalisé · Comparateur · Alerte de prix · Dates flexibles
-            </Text>
-            <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-              <Button onPress={() => handleUpgrade('oneshot')} variant="outline" fullWidth>
-                One-shot — 4,99€ (30 jours)
-              </Button>
-              <Button onPress={() => handleUpgrade('annual')} fullWidth>
-                Annuel — 29€/an
-              </Button>
+        <Pressable
+          onPress={() => router.push('/subscription/index' as any)}
+          style={({ pressed }) => [styles.subBanner, pressed && { opacity: 0.85 }]}
+        >
+          <View style={styles.subBannerLeft}>
+            <View style={[styles.subBannerIcon, !user?.isPremium && { backgroundColor: colors.amber[500] }]}>
+              <Ionicons name={user?.isPremium ? 'star' : 'sparkles-outline'} size={20} color={colors.white} />
             </View>
-          </Card>
-        )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.subBannerTitle}>
+                {user?.isPremium ? 'Mon abonnement' : 'Passe à Premium'}
+              </Text>
+              <Text style={styles.subBannerSub}>
+                {user?.isPremium
+                  ? `${user.premiumPlan === 'annual' ? 'Abonnement annuel' : 'Pass one-shot'} · gérer / résilier`
+                  : 'Itinéraire IA, comparateur, alertes de prix et plus encore'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.white} />
+        </Pressable>
 
         <Section title="Compte">
           <Row icon="mail-outline" label="Modifier l'email" onPress={() => setModal('email')} />
@@ -242,9 +240,19 @@ const styles = StyleSheet.create({
   },
   email: { fontSize: fontSize.lg, fontWeight: '700', color: colors.gray[900] },
   role: { fontSize: fontSize.sm, color: colors.gray[500] },
-  upgradeCard: { marginTop: spacing.lg },
-  upgradeTitle: { fontSize: fontSize.lg, fontWeight: '800', color: colors.gray[900] },
-  upgradeDesc: { fontSize: fontSize.sm, color: colors.gray[600], marginTop: 4, lineHeight: 20 },
+  subBanner: {
+    marginTop: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius['2xl'],
+    backgroundColor: colors.primary[700],
+  },
+  subBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
+  subBannerIcon: { width: 40, height: 40, borderRadius: radius.lg, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  subBannerTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white },
+  subBannerSub: { fontSize: fontSize.xs, color: colors.primary[100], marginTop: 2, lineHeight: 16 },
   sectionTitle: {
     fontSize: fontSize.xs, fontWeight: '700', color: colors.gray[500],
     textTransform: 'uppercase', letterSpacing: 0.5,

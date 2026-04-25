@@ -87,6 +87,32 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
   }
 };
 
+export const createPortalSession = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user) {
+      res.status(404).json({ error: 'Utilisateur non trouvé' });
+      return;
+    }
+
+    const subscription = await prisma.subscription.findUnique({ where: { userId: user.id } });
+    if (!subscription?.stripeCustomerId) {
+      res.status(400).json({ error: "Aucun abonnement à gérer" });
+      return;
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: subscription.stripeCustomerId,
+      return_url: `${env.CLIENT_URL}/profile`,
+    });
+
+    res.json({ url: session.url });
+  } catch (error: any) {
+    console.error('CreatePortalSession error:', error?.message || error);
+    res.status(500).json({ error: error?.message || 'Erreur lors de la création du portail' });
+  }
+};
+
 export const handleWebhook = async (req: Request, res: Response): Promise<void> => {
   const sig = req.headers['stripe-signature'] as string;
 

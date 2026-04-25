@@ -36,6 +36,7 @@ function RootNav() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="simulation/[id]" options={{ headerShown: true, title: 'Détails' }} />
+      <Stack.Screen name="subscription/index" options={{ headerShown: true, title: 'Mon abonnement' }} />
     </Stack>
   );
 }
