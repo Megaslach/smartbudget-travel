@@ -7,7 +7,7 @@ import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
-import { getDestinationImage } from '../../lib/destinationImages';
+import { getDestinationImage, getActivityImage } from '../../lib/destinationImages';
 import type {
   Simulation, BudgetEstimate, FlightOption, HotelOption,
   ActivityOption, CarRentalOption, PublicTransportOption,
@@ -163,7 +163,9 @@ export default function SimulationDetail() {
               {/* Activities */}
               {budget.activities?.options?.length > 0 && (
                 <Section title="Activités" icon="ticket-outline">
-                  {budget.activities.options.map((a, i) => <ActivityCard key={i} activity={a} people={sim.people} />)}
+                  {budget.activities.options.map((a, i) => (
+                    <ActivityCard key={i} activity={a} people={sim.people} destination={sim.destination} />
+                  ))}
                 </Section>
               )}
 
@@ -341,27 +343,42 @@ function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number })
   );
 }
 
-function ActivityCard({ activity, people }: { activity: ActivityOption; people: number }) {
+function ActivityCard({ activity, people, destination }: { activity: ActivityOption; people: number; destination: string }) {
+  const [resolvedImage, setResolvedImage] = useState<string | null>(activity.imageUrl ?? null);
+
+  useEffect(() => {
+    if (activity.imageUrl) {
+      setResolvedImage(activity.imageUrl);
+      return;
+    }
+    let cancelled = false;
+    getActivityImage(activity.name, destination).then((img) => {
+      if (!cancelled) setResolvedImage(img);
+    });
+    return () => { cancelled = true; };
+  }, [activity.imageUrl, activity.name, destination]);
+
   return (
     <Pressable onPress={() => activity.bookingUrl && Linking.openURL(activity.bookingUrl)}>
       <Card noPadding style={{ overflow: 'hidden' }}>
-        {activity.imageUrl && (
-          <View style={styles.activityImageBox}>
-            <Image source={{ uri: activity.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            <View style={styles.activityPriceBadge}>
-              <Text style={styles.activityPriceText}>{formatCurrency(activity.price)}/pers</Text>
+        <View style={styles.activityImageBox}>
+          {resolvedImage ? (
+            <Image source={{ uri: resolvedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+            <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="image-outline" size={28} color={colors.gray[300]} />
             </View>
+          )}
+          <View style={styles.activityPriceBadge}>
+            <Text style={styles.activityPriceText}>{formatCurrency(activity.price)}/pers</Text>
           </View>
-        )}
+        </View>
         <View style={{ padding: spacing.md }}>
           <Text style={styles.rowTitle} numberOfLines={1}>{activity.name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <Text style={styles.rowMeta}>{activity.duration}</Text>
             {people > 1 && <Text style={styles.rowSub}>{formatCurrency(activity.price * people)} / groupe</Text>}
           </View>
-          {!activity.imageUrl && (
-            <Text style={[styles.rowPrice, { marginTop: 4 }]}>{formatCurrency(activity.price)}/pers</Text>
-          )}
         </View>
       </Card>
     </Pressable>
