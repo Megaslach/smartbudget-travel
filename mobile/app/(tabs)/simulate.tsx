@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +7,15 @@ import Card from '../../components/Card';
 import Button from '../../components/Button';
 import Autocomplete from '../../components/Autocomplete';
 import DateField from '../../components/DateField';
+import PremiumFiltersSheet from '../../components/PremiumFiltersSheet';
+import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
+import type { PremiumFilters } from '@smartbudget/shared';
 import { colors, fontSize, radius, spacing } from '../../lib/theme';
 
 export default function SimulateScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [destination, setDestination] = useState('');
   const [departureCity, setDepartureCity] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -19,6 +23,14 @@ export default function SimulateScreen() {
   const [people, setPeople] = useState(2);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [premiumFilters, setPremiumFilters] = useState<PremiumFilters>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const filterCount = Object.values(premiumFilters).filter(v => {
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === 'string') return v.length > 0;
+    return v !== undefined && v !== null && v !== false;
+  }).length;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -42,6 +54,7 @@ export default function SimulateScreen() {
     try {
       const result = await api.simulate({
         destination, departureCity, startDate, endDate, people,
+        premiumFilters: filterCount > 0 ? premiumFilters : undefined,
       });
       router.push(`/simulation/${result.simulation.id}`);
     } catch (err: any) {
@@ -49,6 +62,17 @@ export default function SimulateScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openFilters = () => {
+    if (!user?.isPremium) {
+      Alert.alert(
+        'Premium requis',
+        'Les filtres avancés sont une fonctionnalité Premium. Passe Premium depuis ton profil.',
+      );
+      return;
+    }
+    setFiltersOpen(true);
   };
 
   return (
@@ -114,6 +138,24 @@ export default function SimulateScreen() {
             </View>
           </View>
 
+          <Pressable onPress={openFilters} style={styles.premiumBtn}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <Ionicons
+                name={user?.isPremium ? 'star' : 'lock-closed-outline'}
+                size={18}
+                color={user?.isPremium ? colors.amber[500] : colors.gray[400]}
+              />
+              <Text style={[styles.premiumLabel, !user?.isPremium && { color: colors.gray[500] }]}>
+                Filtres Premium {filterCount > 0 && `(${filterCount})`}
+              </Text>
+            </View>
+            <Ionicons
+              name={user?.isPremium ? 'chevron-forward' : 'arrow-forward'}
+              size={16}
+              color={user?.isPremium ? colors.amber[500] : colors.gray[400]}
+            />
+          </Pressable>
+
           {error && <Text style={styles.errorBox}>{error}</Text>}
 
           <Button onPress={handleSubmit} loading={loading} fullWidth size="lg">
@@ -126,6 +168,13 @@ export default function SimulateScreen() {
           Estimations basées sur des données réelles (vols, hôtels) quand disponibles, sinon sur l&apos;IA.
         </Text>
       </ScrollView>
+
+      <PremiumFiltersSheet
+        visible={filtersOpen}
+        initial={premiumFilters}
+        onClose={() => setFiltersOpen(false)}
+        onApply={setPremiumFilters}
+      />
     </SafeAreaView>
   );
 }
@@ -150,5 +199,17 @@ const styles = StyleSheet.create({
   },
   peopleValue: { fontSize: fontSize.lg, fontWeight: '700', color: colors.gray[900], minWidth: 24, textAlign: 'center' },
   errorBox: { backgroundColor: '#FEE2E2', color: colors.red[600], padding: spacing.md, borderRadius: radius.lg, fontSize: fontSize.sm },
+  premiumBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.amber[100] + '60',
+    borderWidth: 1,
+    borderColor: colors.amber[400] + '60',
+    borderRadius: radius.lg,
+  },
+  premiumLabel: { fontSize: fontSize.sm, fontWeight: '700', color: colors.amber[500] },
   disclaimer: { fontSize: fontSize.xs, color: colors.gray[400], textAlign: 'center', marginTop: spacing.lg, lineHeight: 16 },
 });

@@ -31,14 +31,14 @@ Use this table to spot what's missing on either platform. ✅ = implemented, ⚠
 | **Auth** | | | |
 | Login / Register | ✅ | ✅ | |
 | Show/hide password | ✅ | ✅ | |
-| Profile edit | ✅ | ❌ | Mobile shows "Bientôt" |
-| Account deletion | ✅ | ❌ | |
+| Profile edit | ✅ | ✅ | Email + password modals |
+| Account deletion | ✅ | ✅ | With confirmation alert |
 | **Simulation** | | | |
 | Basic simulation form | ✅ | ✅ | |
 | Destination autocomplete | ✅ | ✅ | Native dropdown |
 | Airport autocomplete (departure) | ✅ | ✅ | Native dropdown |
 | Date picker (calendar) | ✅ | ✅ | Native iOS/Android picker |
-| Premium filters (style, pace, dietary…) | ✅ | ❌ | Premium-only |
+| Premium filters (style, pace, dietary…) | ✅ | ✅ | Bottom sheet, gated by isPremium |
 | **Results** | | | |
 | Budget breakdown card | ✅ | ✅ | |
 | Flight options list | ✅ | ✅ | |
@@ -46,24 +46,24 @@ Use this table to spot what's missing on either platform. ✅ = implemented, ⚠
 | Activities full list | ✅ | ✅ | With images, prices |
 | Local transport (cars + public) | ✅ | ✅ | |
 | Add-ons (eSIM, insurance, transfer) | ✅ | ✅ | Display-only on mobile |
-| Activities map | ✅ | ❌ | Needs `react-native-maps` |
+| Activities map | ✅ | ✅ | react-native-maps with category-colored markers |
 | AI tips card | ✅ | ✅ | Outlook + tips + booking window |
-| Flexible dates scan | ✅ | ❌ | |
+| Flexible dates scan | ✅ | ✅ | Premium-gated, list of alternative dates |
 | Itinerary day-by-day | ✅ | ✅ | Day tabs + timeline (no map yet) |
 | Trip generation (premium) | ✅ | ✅ | Triggers from detail screen |
 | **Pro features** | | | |
 | Comparator | ✅ | ✅ | 2-4 destinations side-by-side |
-| Price alerts | ✅ | ❌ | Needs SVG chart on mobile |
-| Collaboration / invites | ✅ | ❌ | |
-| Comments | ✅ | ❌ | |
+| Price alerts | ✅ | ✅ | Toggle + threshold + bar sparkline |
+| Collaboration / invites | ✅ | ✅ | Native Share API for invite link |
+| Comments | ✅ | ✅ | Thread + add/delete |
 | **Payment** | | | |
 | Stripe checkout (oneshot/annual) | ✅ | ⚠️ | Mobile opens browser; native iOS needs IAP |
 | **Other** | | | |
 | Dashboard / saved trips | ✅ | ✅ | |
-| Profile screen | ✅ | ⚠️ | Profile edit/password stubs |
-| PDF export | ✅ | ❌ | |
-| Share trip link | ✅ | ❌ | |
-| Push notifications | — | ❌ | Mobile-only — Expo push |
+| Profile screen | ✅ | ✅ | Edit email/password + delete account |
+| PDF export | ✅ | ❌ | Web-only (jspdf) — skip on mobile |
+| Share trip link | ✅ | ✅ | Native Share sheet (iOS/Android) |
+| Push notifications | — | ❌ | Mobile-only — Expo push (later) |
 | Offline mode | ❌ | ❌ | Mobile-only (later) |
 
 ## Conventions

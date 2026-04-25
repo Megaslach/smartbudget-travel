@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Itinerary, ItineraryActivity, ItineraryCategory, ItineraryTimeSlot } from '@smartbudget/shared';
 import { formatCurrency } from '@smartbudget/shared';
 import Card from './Card';
+import ActivityMap from './ActivityMap';
 import { colors, fontSize, radius, spacing } from './../lib/theme';
 
 interface Props {
@@ -91,7 +92,13 @@ export default function ItineraryView({ itinerary }: Props) {
           )}
         </View>
 
-        <View style={{ gap: spacing.md, marginTop: spacing.sm }}>
+        {(day.activities || []).some(a => a.lat && a.lng) && (
+          <View style={{ marginTop: spacing.md }}>
+            <ActivityMap activities={day.activities || []} />
+          </View>
+        )}
+
+        <View style={{ gap: spacing.md, marginTop: spacing.md }}>
           {(day.activities || []).map((a, idx) => (
             <ActivityRow key={idx} activity={a} />
           ))}

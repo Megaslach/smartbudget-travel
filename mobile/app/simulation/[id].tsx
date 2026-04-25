@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ScrollView, View, Text, StyleSheet, ActivityIndicator, Pressable,
-  Linking, Image, Alert,
+  Linking, Image, Alert, Share,
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { api } from '../../lib/api';
 import type {
   Simulation, BudgetEstimate, FlightOption, HotelOption,
   ActivityOption, CarRentalOption, PublicTransportOption,
-  AddonOption, AiTipsResult, Itinerary,
+  AddonOption,
 } from '@smartbudget/shared';
 import { formatCurrency, formatShortDate } from '@smartbudget/shared';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,7 +18,12 @@ import Card from '../../components/Card';
 import Button from '../../components/Button';
 import ItineraryView from '../../components/ItineraryView';
 import AiTipsView from '../../components/AiTipsView';
+import PriceAlertView from '../../components/PriceAlertView';
+import FlexibleDatesView from '../../components/FlexibleDatesView';
+import CollabView from '../../components/CollabView';
 import { colors, fontSize, radius, spacing } from '../../lib/theme';
+
+const WEB_BASE = 'https://smartbudget-travel.netlify.app';
 
 export default function SimulationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +47,17 @@ export default function SimulationDetail() {
   const budget: BudgetEstimate | null = sim?.budgetData
     || (typeof sim?.budget === 'object' ? (sim.budget as BudgetEstimate) : null);
 
+  const handleShare = async () => {
+    if (!sim) return;
+    const url = `${WEB_BASE}/shared/${sim.id}`;
+    try {
+      await Share.share({
+        message: `Regarde ma simulation pour ${sim.destination} sur SmartBudget : ${url}`,
+        url,
+      });
+    } catch {}
+  };
+
   const handleGenerateItinerary = async () => {
     if (!sim) return;
     if (!user?.isPremium) {
@@ -64,7 +80,14 @@ export default function SimulationDetail() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Stack.Screen options={{ title: sim?.destination || 'Voyage' }} />
+      <Stack.Screen options={{
+        title: sim?.destination || 'Voyage',
+        headerRight: () => sim ? (
+          <Pressable onPress={handleShare} hitSlop={10} style={{ marginRight: 8 }}>
+            <Ionicons name="share-outline" size={22} color={colors.primary[700]} />
+          </Pressable>
+        ) : null,
+      }} />
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary[700]} />
@@ -172,6 +195,25 @@ export default function SimulationDetail() {
           {/* AI Tips */}
           {sim.aiTips && <AiTipsView tips={sim.aiTips} />}
 
+          {/* Price alerts */}
+          {sim.role !== 'editor' && (
+            <PriceAlertView
+              simulationId={sim.id}
+              initialEnabled={sim.priceAlertEnabled}
+              initialThreshold={sim.priceAlertThreshold}
+            />
+          )}
+
+          {/* Flexible dates */}
+          <FlexibleDatesView simulationId={sim.id} isPremium={!!user?.isPremium} />
+
+          {/* Collab */}
+          <CollabView
+            simulationId={sim.id}
+            isOwner={sim.role !== 'editor'}
+            currentUserId={user?.id}
+          />
+
           {/* Itinerary */}
           {sim.itinerary ? (
             <ItineraryView itinerary={sim.itinerary} />
@@ -256,7 +298,7 @@ function FlightRow({ flight, people }: { flight: FlightOption; people: number })
 function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number }) {
   return (
     <Pressable onPress={() => hotel.bookingUrl && Linking.openURL(hotel.bookingUrl)}>
-      <Card noPadding style={{ flexDirection: 'row', overflow: 'hidden' }}>
+      <Card noPadding style={{ flexDirection: 'row', overflow: 'hidden', alignItems: 'stretch' }}>
         <View style={styles.hotelImageBox}>
           {hotel.imageUrl ? (
             <Image source={{ uri: hotel.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -413,10 +455,11 @@ const styles = StyleSheet.create({
 
   hotelImageBox: {
     width: 100,
+    height: 100,
     backgroundColor: colors.indigo[100],
     alignItems: 'center', justifyContent: 'center',
   },
-  hotelBody: { flex: 1, padding: spacing.md, minWidth: 0 },
+  hotelBody: { flex: 1, padding: spacing.md, minWidth: 0, justifyContent: 'center' },
 
   activityImageBox: { height: 130, backgroundColor: colors.gray[100], position: 'relative' },
   activityPriceBadge: {
