@@ -19,8 +19,8 @@ The same logic runs in reverse for **"sync web from mobile"**.
 
 | Field | Hash | Date |
 |---|---|---|
-| `lastSyncedFromWeb`   | 61ca00e | 2026-04-25 |
-| `lastSyncedFromMobile`| 61ca00e | 2026-04-25 |
+| `lastSyncedFromWeb`   | 7b6e8e8 | 2026-04-25 |
+| `lastSyncedFromMobile`| 7b6e8e8 | 2026-04-25 |
 
 ## Feature parity matrix
 
