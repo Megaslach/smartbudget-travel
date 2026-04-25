@@ -1,8 +1,7 @@
-import { useMemo } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { View, Text, StyleSheet, Pressable, Linking, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { ItineraryActivity, ItineraryCategory } from '@smartbudget/shared';
-import { colors, radius } from '../lib/theme';
+import { colors, fontSize, radius, spacing } from '../lib/theme';
 
 const CATEGORY_COLOR: Record<ItineraryCategory, string> = {
   sight: colors.primary[600],
@@ -14,70 +13,72 @@ const CATEGORY_COLOR: Record<ItineraryCategory, string> = {
   nightlife: '#A855F7',
 };
 
+const CATEGORY_EMOJI: Record<ItineraryCategory, string> = {
+  sight: '🏛️',
+  food: '🍽️',
+  activity: '🎯',
+  transport: '🚆',
+  nature: '🌿',
+  shopping: '🛍️',
+  nightlife: '🍸',
+};
+
 interface Props {
   activities: ItineraryActivity[];
-  height?: number;
 }
 
-export default function ActivityMap({ activities, height = 220 }: Props) {
-  const valid = activities.filter(a => a.lat && a.lng);
+const openInMaps = (a: ItineraryActivity) => {
+  const query = a.lat && a.lng ? `${a.lat},${a.lng}` : encodeURIComponent(a.location || a.title);
+  const url = Platform.OS === 'ios'
+    ? `https://maps.apple.com/?q=${query}`
+    : `https://www.google.com/maps/search/?api=1&query=${query}`;
+  Linking.openURL(url);
+};
 
-  const region = useMemo(() => {
-    if (valid.length === 0) return null;
-    const lats = valid.map(a => a.lat);
-    const lngs = valid.map(a => a.lng);
-    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-    const latDelta = Math.max(0.02, (maxLat - minLat) * 1.6);
-    const lngDelta = Math.max(0.02, (maxLng - minLng) * 1.6);
-    return {
-      latitude: (minLat + maxLat) / 2,
-      longitude: (minLng + maxLng) / 2,
-      latitudeDelta: latDelta,
-      longitudeDelta: lngDelta,
-    };
-  }, [valid]);
-
-  if (!region || valid.length === 0) {
-    return (
-      <View style={[styles.empty, { height }]}>
-        <Text style={styles.emptyText}>Pas de coordonnées disponibles pour cette journée.</Text>
-      </View>
-    );
-  }
-
-  // Web fallback: react-native-maps doesn't support web — show a simple list
-  if (Platform.OS === 'web') {
-    return (
-      <View style={[styles.empty, { height }]}>
-        <Text style={styles.emptyText}>Carte disponible sur iOS/Android.</Text>
-      </View>
-    );
-  }
+export default function ActivityMap({ activities }: Props) {
+  const valid = activities.filter(a => a.location || (a.lat && a.lng));
+  if (valid.length === 0) return null;
 
   return (
-    <View style={[styles.wrap, { height }]}>
-      <MapView
-        provider={PROVIDER_DEFAULT}
-        style={{ flex: 1 }}
-        initialRegion={region}
-      >
-        {valid.map((a, i) => (
-          <Marker
-            key={i}
-            coordinate={{ latitude: a.lat, longitude: a.lng }}
-            title={a.title}
-            description={a.location}
-            pinColor={CATEGORY_COLOR[a.category as ItineraryCategory] || colors.primary[600]}
-          />
-        ))}
-      </MapView>
+    <View style={styles.wrap}>
+      <View style={styles.header}>
+        <Ionicons name="map-outline" size={14} color={colors.gray[600]} />
+        <Text style={styles.headerText}>Lieux ({valid.length}) — tape pour ouvrir dans Maps</Text>
+      </View>
+      <View style={{ gap: 8, marginTop: 8 }}>
+        {valid.map((a, i) => {
+          const cat = a.category as ItineraryCategory;
+          const color = CATEGORY_COLOR[cat] || colors.primary[600];
+          const emoji = CATEGORY_EMOJI[cat] || '📍';
+          return (
+            <Pressable key={i} onPress={() => openInMaps(a)}>
+              {({ pressed }) => (
+                <View style={[styles.row, pressed && { backgroundColor: colors.gray[100] }]}>
+                  <View style={[styles.pin, { backgroundColor: color }]}>
+                    <Text style={styles.pinEmoji}>{emoji}</Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.title} numberOfLines={1}>{a.title}</Text>
+                    {!!a.location && <Text style={styles.location} numberOfLines={1}>{a.location}</Text>}
+                  </View>
+                  <Ionicons name="open-outline" size={16} color={colors.gray[400]} />
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.gray[100] },
-  empty: { borderRadius: radius.xl, backgroundColor: colors.gray[100], alignItems: 'center', justifyContent: 'center', padding: 16 },
-  emptyText: { fontSize: 13, color: colors.gray[500], textAlign: 'center' },
+  wrap: { backgroundColor: colors.gray[50], borderRadius: radius.xl, padding: spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerText: { fontSize: fontSize.xs, color: colors.gray[600], fontWeight: '600' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: 8, borderRadius: radius.lg },
+  pin: { width: 36, height: 36, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  pinEmoji: { fontSize: 16 },
+  title: { fontSize: fontSize.sm, fontWeight: '600', color: colors.gray[900] },
+  location: { fontSize: fontSize.xs, color: colors.gray[500], marginTop: 1 },
 });
