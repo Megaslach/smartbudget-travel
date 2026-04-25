@@ -19,8 +19,8 @@ The same logic runs in reverse for **"sync web from mobile"**.
 
 | Field | Hash | Date |
 |---|---|---|
-| `lastSyncedFromWeb`   | 489122e | 2026-04-25 |
-| `lastSyncedFromMobile`| 489122e | 2026-04-25 |
+| `lastSyncedFromWeb`   | _pending_ | 2026-04-25 |
+| `lastSyncedFromMobile`| _pending_ | 2026-04-25 |
 
 ## Feature parity matrix
 
@@ -35,28 +35,34 @@ Use this table to spot what's missing on either platform. ✅ = implemented, ⚠
 | Account deletion | ✅ | ❌ | |
 | **Simulation** | | | |
 | Basic simulation form | ✅ | ✅ | |
-| Destination autocomplete | ✅ | ❌ | Need port to mobile |
-| Date picker (calendar) | ✅ | ❌ | Mobile uses text input — replace with `react-native-calendars` |
+| Destination autocomplete | ✅ | ✅ | Native dropdown |
+| Airport autocomplete (departure) | ✅ | ✅ | Native dropdown |
+| Date picker (calendar) | ✅ | ✅ | Native iOS/Android picker |
 | Premium filters (style, pace, dietary…) | ✅ | ❌ | Premium-only |
 | **Results** | | | |
 | Budget breakdown card | ✅ | ✅ | |
-| Flight/hotel options with deeplink | ✅ | ✅ | |
-| Activities map | ✅ | ❌ | Mobile needs `react-native-maps` |
-| AI tips card | ✅ | ❌ | |
-| Itinerary day-by-day | ✅ | ❌ | Premium |
-| Add-ons (eSIM, insurance, transfer) | ✅ | ❌ | |
-| **Pro features** | | | |
-| Comparator | ✅ | ❌ | |
-| Trip generation (premium) | ✅ | ❌ | |
-| Price alerts | ✅ | ❌ | |
+| Flight options list | ✅ | ✅ | |
+| Hotel options list (with images) | ✅ | ✅ | |
+| Activities full list | ✅ | ✅ | With images, prices |
+| Local transport (cars + public) | ✅ | ✅ | |
+| Add-ons (eSIM, insurance, transfer) | ✅ | ✅ | Display-only on mobile |
+| Activities map | ✅ | ❌ | Needs `react-native-maps` |
+| AI tips card | ✅ | ✅ | Outlook + tips + booking window |
 | Flexible dates scan | ✅ | ❌ | |
+| Itinerary day-by-day | ✅ | ✅ | Day tabs + timeline (no map yet) |
+| Trip generation (premium) | ✅ | ✅ | Triggers from detail screen |
+| **Pro features** | | | |
+| Comparator | ✅ | ✅ | 2-4 destinations side-by-side |
+| Price alerts | ✅ | ❌ | Needs SVG chart on mobile |
 | Collaboration / invites | ✅ | ❌ | |
 | Comments | ✅ | ❌ | |
 | **Payment** | | | |
 | Stripe checkout (oneshot/annual) | ✅ | ⚠️ | Mobile opens browser; native iOS needs IAP |
 | **Other** | | | |
 | Dashboard / saved trips | ✅ | ✅ | |
-| Profile screen | ✅ | ⚠️ | Most actions are stubs |
+| Profile screen | ✅ | ⚠️ | Profile edit/password stubs |
+| PDF export | ✅ | ❌ | |
+| Share trip link | ✅ | ❌ | |
 | Push notifications | — | ❌ | Mobile-only — Expo push |
 | Offline mode | ❌ | ❌ | Mobile-only (later) |
 

@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import {
-  ScrollView, View, Text, StyleSheet, Pressable, Platform,
-} from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
-import Input from '../../components/Input';
 import Button from '../../components/Button';
+import Autocomplete from '../../components/Autocomplete';
+import DateField from '../../components/DateField';
 import { api } from '../../lib/api';
 import { colors, fontSize, radius, spacing } from '../../lib/theme';
 
@@ -21,7 +20,8 @@ export default function SimulateScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dateValid = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const handleSubmit = async () => {
     setError(null);
@@ -29,8 +29,8 @@ export default function SimulateScreen() {
       setError('Destination et ville de départ requises');
       return;
     }
-    if (!dateValid(startDate) || !dateValid(endDate)) {
-      setError('Format de date attendu: AAAA-MM-JJ');
+    if (!startDate || !endDate) {
+      setError('Sélectionne les dates de départ et de retour');
       return;
     }
     if (new Date(endDate) <= new Date(startDate)) {
@@ -53,44 +53,50 @@ export default function SimulateScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.title}>Simuler un voyage</Text>
         <Text style={styles.subtitle}>Remplis les détails, on calcule le reste.</Text>
 
         <Card style={styles.formCard}>
-          <Input
+          <Autocomplete
+            mode="destination"
             label="Destination"
             placeholder="ex: Bali, Lisbonne, Tokyo"
             required
             value={destination}
-            onChangeText={setDestination}
+            onChange={setDestination}
           />
-          <Input
+          <Autocomplete
+            mode="airport"
             label="Ville de départ"
             placeholder="ex: Paris, Marseille"
             required
             value={departureCity}
-            onChangeText={setDepartureCity}
+            onChange={setDepartureCity}
           />
+
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Input
+              <DateField
                 label="Départ"
-                placeholder="2026-08-15"
                 required
                 value={startDate}
-                onChangeText={setStartDate}
-                autoCapitalize="none"
+                onChange={setStartDate}
+                minDate={today}
+                placeholder="Choisir"
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Input
+              <DateField
                 label="Retour"
-                placeholder="2026-08-22"
                 required
                 value={endDate}
-                onChangeText={setEndDate}
-                autoCapitalize="none"
+                onChange={setEndDate}
+                minDate={startDate ? new Date(startDate) : today}
+                placeholder="Choisir"
               />
             </View>
           </View>
@@ -98,17 +104,11 @@ export default function SimulateScreen() {
           <View style={styles.peopleRow}>
             <Text style={styles.peopleLabel}>Voyageurs</Text>
             <View style={styles.peopleControl}>
-              <Pressable
-                onPress={() => setPeople(Math.max(1, people - 1))}
-                style={styles.peopleBtn}
-              >
+              <Pressable onPress={() => setPeople(Math.max(1, people - 1))} style={styles.peopleBtn}>
                 <Ionicons name="remove" size={20} color={colors.gray[700]} />
               </Pressable>
               <Text style={styles.peopleValue}>{people}</Text>
-              <Pressable
-                onPress={() => setPeople(Math.min(10, people + 1))}
-                style={styles.peopleBtn}
-              >
+              <Pressable onPress={() => setPeople(Math.min(10, people + 1))} style={styles.peopleBtn}>
                 <Ionicons name="add" size={20} color={colors.gray[700]} />
               </Pressable>
             </View>
@@ -123,7 +123,7 @@ export default function SimulateScreen() {
         </Card>
 
         <Text style={styles.disclaimer}>
-          Les estimations sont basées sur des données réelles (vols, hôtels) quand disponibles, sinon sur l&apos;IA.
+          Estimations basées sur des données réelles (vols, hôtels) quand disponibles, sinon sur l&apos;IA.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -137,10 +137,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: fontSize.sm, color: colors.gray[500], marginBottom: spacing.lg },
   formCard: { gap: spacing.md },
   row: { flexDirection: 'row', gap: spacing.md },
-  peopleRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
+  peopleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm },
   peopleLabel: { fontSize: fontSize.sm, fontWeight: '600', color: colors.gray[700] },
   peopleControl: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.lg,
@@ -152,12 +149,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   peopleValue: { fontSize: fontSize.lg, fontWeight: '700', color: colors.gray[900], minWidth: 24, textAlign: 'center' },
-  errorBox: {
-    backgroundColor: '#FEE2E2', color: colors.red[600],
-    padding: spacing.md, borderRadius: radius.lg, fontSize: fontSize.sm,
-  },
-  disclaimer: {
-    fontSize: fontSize.xs, color: colors.gray[400], textAlign: 'center',
-    marginTop: spacing.lg, lineHeight: 16,
-  },
+  errorBox: { backgroundColor: '#FEE2E2', color: colors.red[600], padding: spacing.md, borderRadius: radius.lg, fontSize: fontSize.sm },
+  disclaimer: { fontSize: fontSize.xs, color: colors.gray[400], textAlign: 'center', marginTop: spacing.lg, lineHeight: 16 },
 });

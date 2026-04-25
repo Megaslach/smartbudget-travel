@@ -34,6 +34,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="compare"
+        options={{
+          title: 'Comparer',
+          tabBarIcon: ({ color, size }) => <Ionicons name="git-compare-outline" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="trips"
         options={{
           title: 'Mes voyages',
