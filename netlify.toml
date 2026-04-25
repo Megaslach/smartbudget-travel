@@ -1,6 +1,6 @@
+# Build from repo root so npm workspaces resolves @smartbudget/shared
 [build]
-  base    = "frontend"
-  command = "npm run build"
+  command = "npm install --legacy-peer-deps && npm run build --workspace=@smartbudget/web"
   publish = "frontend/.next"
 
 [functions]

@@ -1,5 +1,5 @@
 {
-  "name": "smartbudget-travel",
+  "name": "@smartbudget/web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@smartbudget/shared": "*",
     "@stripe/stripe-js": "^3.4.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^11.2.4",

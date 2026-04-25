@@ -2,7 +2,15 @@ node_modules
 dist
 .env
 .env.local
+.env.vercel
+.env.vercel.check
 .next
 out
 .netlify
 .vercel
+.expo
+SESSION_CONTEXT.md
+*.tsbuildinfo
+
+# Per-workspace lockfile not needed: web is built from monorepo root
+frontend/package-lock.json
