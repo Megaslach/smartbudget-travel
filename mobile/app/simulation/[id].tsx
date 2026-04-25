@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   ScrollView, View, Text, StyleSheet, ActivityIndicator, Pressable,
-  Linking, Image, Alert, Share,
+  Linking, Image, Alert, Share, ImageBackground,
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
+import { getDestinationImage } from '../../lib/destinationImages';
 import type {
   Simulation, BudgetEstimate, FlightOption, HotelOption,
   ActivityOption, CarRentalOption, PublicTransportOption,
@@ -32,6 +33,13 @@ export default function SimulationDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [heroImage, setHeroImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sim?.destination) {
+      getDestinationImage(sim.destination).then(setHeroImage);
+    }
+  }, [sim?.destination]);
 
   const load = () => {
     if (!id) return;
@@ -98,12 +106,18 @@ export default function SimulationDetail() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={styles.header}>
-            <Text style={styles.dest}>{sim.destination}</Text>
-            <Text style={styles.meta}>
-              {formatShortDate(sim.startDate)} → {formatShortDate(sim.endDate)} · {sim.duration} jours · {sim.people} pers
-            </Text>
-          </View>
+          <ImageBackground
+            source={heroImage ? { uri: heroImage } : undefined}
+            style={styles.hero}
+            imageStyle={{ borderRadius: radius['2xl'] }}
+          >
+            <View style={styles.heroOverlay}>
+              <Text style={styles.heroDest}>{sim.destination}</Text>
+              <Text style={styles.heroMeta}>
+                {formatShortDate(sim.startDate)} → {formatShortDate(sim.endDate)} · {sim.duration}j · {sim.people} pers
+              </Text>
+            </View>
+          </ImageBackground>
 
           {budget && (
             <>
@@ -433,6 +447,21 @@ const styles = StyleSheet.create({
   header: { gap: 4 },
   dest: { fontSize: fontSize['3xl'], fontWeight: '800', color: colors.gray[900] },
   meta: { fontSize: fontSize.sm, color: colors.gray[500] },
+
+  hero: {
+    height: 180,
+    justifyContent: 'flex-end',
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
+    backgroundColor: colors.gray[200],
+  },
+  heroOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    padding: spacing.lg,
+    gap: 4,
+  },
+  heroDest: { fontSize: fontSize['3xl'], fontWeight: '800', color: colors.white },
+  heroMeta: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)' },
 
   totalCard: { backgroundColor: colors.primary[700], borderColor: 'transparent', alignItems: 'center', gap: 4 },
   totalLabel: { fontSize: fontSize.sm, color: colors.primary[100], fontWeight: '600' },
