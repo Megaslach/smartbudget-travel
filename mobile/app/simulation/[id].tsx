@@ -7,7 +7,7 @@ import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
-import { getDestinationImage, getActivityImage } from '../../lib/destinationImages';
+import { getDestinationImage, getActivityImage, getOgImageFromUrl } from '../../lib/destinationImages';
 import type {
   Simulation, BudgetEstimate, FlightOption, HotelOption,
   ActivityOption, CarRentalOption, PublicTransportOption,
@@ -312,12 +312,24 @@ function FlightRow({ flight, people }: { flight: FlightOption; people: number })
 }
 
 function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number }) {
+  const [resolvedImage, setResolvedImage] = useState<string | null>(hotel.imageUrl ?? null);
+
+  useEffect(() => {
+    if (hotel.imageUrl) { setResolvedImage(hotel.imageUrl); return; }
+    if (!hotel.bookingUrl) return;
+    let cancelled = false;
+    getOgImageFromUrl(hotel.bookingUrl).then((img) => {
+      if (!cancelled && img) setResolvedImage(img);
+    });
+    return () => { cancelled = true; };
+  }, [hotel.imageUrl, hotel.bookingUrl]);
+
   return (
     <Pressable onPress={() => hotel.bookingUrl && Linking.openURL(hotel.bookingUrl)}>
       <Card noPadding style={{ flexDirection: 'row', overflow: 'hidden', alignItems: 'stretch' }}>
         <View style={styles.hotelImageBox}>
-          {hotel.imageUrl ? (
-            <Image source={{ uri: hotel.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          {resolvedImage ? (
+            <Image source={{ uri: resolvedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
             <Ionicons name="bed" size={28} color={colors.indigo[500]} />
           )}
@@ -352,11 +364,11 @@ function ActivityCard({ activity, people, destination }: { activity: ActivityOpt
       return;
     }
     let cancelled = false;
-    getActivityImage(activity.name, destination).then((img) => {
+    getActivityImage(activity.name, destination, activity.bookingUrl).then((img) => {
       if (!cancelled) setResolvedImage(img);
     });
     return () => { cancelled = true; };
-  }, [activity.imageUrl, activity.name, destination]);
+  }, [activity.imageUrl, activity.name, activity.bookingUrl, destination]);
 
   return (
     <Pressable onPress={() => activity.bookingUrl && Linking.openURL(activity.bookingUrl)}>
