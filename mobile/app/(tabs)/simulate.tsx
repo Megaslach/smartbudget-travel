@@ -71,7 +71,7 @@ export default function SimulateScreen() {
         'Les filtres avancés sont une fonctionnalité Premium.',
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Voir Premium', onPress: () => router.push('/subscription/index' as any) },
+          { text: 'Voir Premium', onPress: () => router.push('/subscription' as any) },
         ],
       );
       return;
@@ -169,7 +169,7 @@ export default function SimulateScreen() {
         </Card>
 
         <Text style={styles.disclaimer}>
-          Estimations basées sur des données réelles (vols, hôtels) quand disponibles, sinon sur l&apos;IA.
+          Estimations basées sur des données réelles (vols, hôtels) quand disponibles, sinon sur nos modèles.
         </Text>
       </ScrollView>
 

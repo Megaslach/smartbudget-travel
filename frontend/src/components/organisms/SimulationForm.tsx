@@ -319,7 +319,7 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
                     onChange={(e) => setAccommodationArea(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all bg-amber-50/30"
                   />
-                  <p className="text-xs text-gray-400 mt-1">L&apos;IA cherchera des logements dans ce quartier spécifiquement</p>
+                  <p className="text-xs text-gray-400 mt-1">Nous chercherons des logements dans ce quartier spécifiquement</p>
                 </div>
 
                 {/* Type hébergement + Chambre */}
@@ -634,7 +634,7 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">L&apos;IA proposera des activités en rapport avec vos centres d&apos;intérêt</p>
+                  <p className="text-xs text-gray-400 mt-2">Nous proposerons des activités en rapport avec vos centres d&apos;intérêt</p>
                 </div>
               </div>
             </motion.div>
@@ -645,7 +645,7 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
       <Button type="submit" size="lg" className="w-full" isLoading={isLoading}>
         {isLoading ? 'Analyse des prix en cours...' : 'Estimer mon budget'}
       </Button>
-      {isLoading && <p className="text-center text-sm text-gray-400 animate-pulse">L&apos;IA recherche les meilleurs prix sur Skyscanner, Booking, Airbnb...</p>}
+      {isLoading && <p className="text-center text-sm text-gray-400 animate-pulse">Recherche en cours sur Skyscanner, Booking, Airbnb...</p>}
     </motion.form>
   );
 }

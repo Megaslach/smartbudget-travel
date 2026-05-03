@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sun, Cloud, Moon, MapPin, Clock, Euro, ChevronRight, Calendar, Sparkles } from 'lucide-react';
 import type { Itinerary, ItineraryActivity, ItineraryDay } from '@/types';
 import Card from '@/components/atoms/Card';
+import { getActivityImage } from '@/lib/images';
 
 const ActivityMap = dynamic(() => import('./ActivityMap'), { ssr: false });
 
@@ -29,9 +30,10 @@ const categoryBadges: Record<string, { label: string; color: string }> = {
 
 interface ItineraryCardProps {
   itinerary: Itinerary | ItineraryDay[] | null | undefined;
+  destination?: string;
 }
 
-export default function ItineraryCard({ itinerary }: ItineraryCardProps) {
+export default function ItineraryCard({ itinerary, destination }: ItineraryCardProps) {
   const [activeDay, setActiveDay] = useState(0);
 
   const days: ItineraryDay[] = Array.isArray(itinerary)
@@ -58,7 +60,7 @@ export default function ItineraryCard({ itinerary }: ItineraryCardProps) {
         </div>
         <div>
           <h3 className="font-display text-lg font-bold text-gray-900">Itinéraire jour par jour</h3>
-          <p className="text-xs text-gray-500">Généré par IA, personnalisé pour ton voyage</p>
+          <p className="text-xs text-gray-500">Personnalisé pour ton voyage</p>
         </div>
       </div>
 
@@ -116,7 +118,7 @@ export default function ItineraryCard({ itinerary }: ItineraryCardProps) {
       <div className="space-y-3">
         <AnimatePresence mode="wait">
           {(day.activities ?? []).map((a, i) => (
-            <ActivityRow key={`${activeDay}-${i}`} activity={a} index={i} />
+            <ActivityRow key={`${activeDay}-${i}`} activity={a} index={i} destination={destination || ''} />
           ))}
         </AnimatePresence>
       </div>
@@ -124,10 +126,19 @@ export default function ItineraryCard({ itinerary }: ItineraryCardProps) {
   );
 }
 
-function ActivityRow({ activity, index }: { activity: ItineraryActivity; index: number }) {
+function ActivityRow({ activity, index, destination }: { activity: ItineraryActivity; index: number; destination: string }) {
   const TimeIcon = timeIcons[activity.time] || Sun;
   const gradient = timeColors[activity.time] || 'from-gray-400 to-gray-500';
   const badge = categoryBadges[activity.category || 'activity'];
+  const [image, setImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getActivityImage(activity.title, destination, activity.bookingUrl).then((img) => {
+      if (!cancelled) setImage(img);
+    });
+    return () => { cancelled = true; };
+  }, [activity.title, destination, activity.bookingUrl]);
 
   return (
     <motion.div
@@ -146,6 +157,16 @@ function ActivityRow({ activity, index }: { activity: ItineraryActivity; index: 
 
       {/* Content */}
       <div className="flex-1 pb-4">
+        {image && (
+          <div className="mb-2 overflow-hidden rounded-xl bg-gray-100 aspect-[16/9] sm:aspect-[21/9]">
+            <img
+              src={image}
+              alt={activity.title}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          </div>
+        )}
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{timeLabels[activity.time]}</span>
           {badge && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badge.color}`}>{badge.label}</span>}

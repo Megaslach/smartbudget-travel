@@ -43,12 +43,12 @@ export default function HomeScreen() {
           icon="trending-down"
           color={colors.emerald[500]}
           title="Budget transparent"
-          desc="Estimation IA basée sur des données réelles, sans surprise."
+          desc="Estimation basée sur des données réelles, sans surprise."
         />
         <FeatureRow
           icon="sparkles"
           color={colors.accent[500]}
-          title="Itinéraire IA personnalisé"
+          title="Itinéraire personnalisé"
           desc="Jour par jour selon ton style, ton budget et tes envies."
         />
         <FeatureRow

@@ -95,7 +95,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
         >
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-900">Prix indicatifs générés par IA</p>
+            <p className="text-sm font-semibold text-amber-900">Prix indicatifs estimés</p>
             <p className="text-xs text-amber-800 mt-0.5">
               Les vrais prix en temps réel ne sont pas disponibles (API non configurée ou quota épuisé).
               Les montants affichés sont des estimations basées sur les données historiques. Vérifiez le prix final avant de réserver.
@@ -203,7 +203,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
                 {budget.flights.isRealData ? (
                   <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1" title={budget.flights.source}><CheckCircle2 className="h-3 w-3" />Prix réels</span>
                 ) : (
-                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation IA basée sur données historiques — vérifier le prix final sur Skyscanner"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
+                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation basée sur données historiques — vérifier le prix final sur Skyscanner"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
                 )}
               </div>
               <a href={budget.flights.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">{budget.flights.isRealData ? 'Réserver' : 'Voir sur Skyscanner'} <ExternalLink className="h-3 w-3" /></a>
@@ -251,7 +251,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
                 {budget.accommodation.isRealData ? (
                   <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1" title={budget.accommodation.source}><CheckCircle2 className="h-3 w-3" />Prix réels</span>
                 ) : (
-                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation IA — vérifier le prix final sur Booking"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
+                  <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation — vérifier le prix final sur Booking"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
                 )}
               </div>
               <a href={budget.accommodation.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Booking <ExternalLink className="h-3 w-3" /></a>

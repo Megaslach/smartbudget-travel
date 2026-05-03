@@ -9,7 +9,7 @@ const STAGES = [
   { icon: Plane, label: 'Recherche des vols réels…', sub: 'SerpApi, Amadeus, Kiwi — en parallèle' },
   { icon: Hotel, label: 'Comparaison des hôtels…', sub: 'Meilleurs quartiers, meilleurs prix/nuit' },
   { icon: TrendingUp, label: 'Calcul du budget total…', sub: 'Vols, hébergement, resto, transport, activités' },
-  { icon: Sparkles, label: 'Conseils IA & itinéraire…', sub: 'Astuces économies et plan jour par jour' },
+  { icon: Sparkles, label: 'Conseils & itinéraire…', sub: 'Astuces économies et plan jour par jour' },
 ];
 
 interface SimulationLoadingOverlayProps {

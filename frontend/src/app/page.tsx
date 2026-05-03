@@ -16,7 +16,7 @@ const destinations = [
 const steps = [
   { num: '01', title: 'Choisissez', desc: 'Entrez votre destination, durée et nombre de voyageurs.', icon: MapPin },
   { num: '02', title: 'Simulez', desc: 'Obtenez une estimation détaillée par catégorie en 2 secondes.', icon: Compass },
-  { num: '03', title: 'Explorez', desc: 'Générez un itinéraire jour par jour avec notre IA.', icon: Sun },
+  { num: '03', title: 'Explorez', desc: 'Générez un itinéraire jour par jour personnalisé.', icon: Sun },
 ];
 
 export default function HomePage() {
@@ -48,7 +48,7 @@ export default function HomePage() {
 
               <p className="mt-8 text-lg text-gray-500 leading-relaxed max-w-lg">
                 Simulez votre budget en un clic, découvrez un itinéraire sur-mesure
-                généré par IA, et partez sans mauvaise surprise.
+                personnalisé pour vous, et partez sans mauvaise surprise.
               </p>
 
               <div className="mt-10 flex flex-wrap gap-4">

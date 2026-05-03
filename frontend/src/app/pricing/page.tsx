@@ -17,7 +17,7 @@ export default function PricingPage() {
             Voyagez plus, <span className="gradient-text italic">dépensez mieux</span>
           </h1>
           <p className="text-gray-400 mt-4 text-lg max-w-lg mx-auto">
-            Commencez gratuitement, débloquez l&apos;IA quand vous êtes prêt.
+            Commencez gratuitement, débloquez les fonctionnalités avancées quand vous êtes prêt.
           </p>
         </motion.div>
         <PricingSection />

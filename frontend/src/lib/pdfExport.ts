@@ -435,7 +435,7 @@ export async function exportSimulationPdf(sim: Simulation): Promise<void> {
       pdf.addPage();
       y = margin;
     }
-    sectionHeader(pdf, 'Conseils IA pour économiser', margin, y, contentW);
+    sectionHeader(pdf, 'Nos conseils pour économiser', margin, y, contentW);
     y += 10;
 
     sim.aiTips.tips.slice(0, 8).forEach((tip) => {

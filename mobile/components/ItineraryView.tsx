@@ -50,7 +50,7 @@ export default function ItineraryView({ itinerary }: Props) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Itinéraire jour par jour</Text>
-          <Text style={styles.headerSub}>Personnalisé par IA</Text>
+          <Text style={styles.headerSub}>Conçu pour toi</Text>
         </View>
       </View>
 

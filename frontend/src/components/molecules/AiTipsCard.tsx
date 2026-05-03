@@ -66,7 +66,7 @@ export default function AiTipsCard({ tips, simulationId }: AiTipsCardProps) {
             <Sparkles className="h-5 w-5 text-violet-600" />
           </div>
           <div>
-            <h3 className="font-display text-lg font-bold text-gray-900">Conseils IA</h3>
+            <h3 className="font-display text-lg font-bold text-gray-900">Nos conseils</h3>
             <p className="text-xs text-gray-400">Analyse intelligente de votre voyage</p>
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function AiTipsCard({ tips, simulationId }: AiTipsCardProps) {
 
             {!scan && !scanning && tips.flexibleDates && tips.flexibleDates.length > 0 && (
               <>
-                <p className="text-[11px] text-gray-400 mb-2">Estimations IA — cliquez pour comparer les vrais prix de vol jour par jour.</p>
+                <p className="text-[11px] text-gray-400 mb-2">Estimations — cliquez pour comparer les vrais prix de vol jour par jour.</p>
                 <div className="grid gap-2">
                   {tips.flexibleDates.map((fd, i) => (
                     <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-violet-50/50 border border-violet-100">

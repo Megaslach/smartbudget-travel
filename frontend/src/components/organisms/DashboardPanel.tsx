@@ -284,7 +284,7 @@ export default function DashboardPanel() {
                           <div className="space-y-4 bg-white">
                             <BudgetResultCard budget={detail.budgetData} destination={detail.destination} duration={detail.duration} people={detail.people} />
                             {detail.aiTips && <AiTipsCard tips={detail.aiTips} simulationId={sim.id} />}
-                            {detail.itinerary && <ItineraryCard itinerary={detail.itinerary} />}
+                            {detail.itinerary && <ItineraryCard itinerary={detail.itinerary} destination={detail.destination} />}
                           </div>
 
                           {detail.role !== 'editor' && (

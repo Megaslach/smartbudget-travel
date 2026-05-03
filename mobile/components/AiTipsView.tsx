@@ -21,7 +21,7 @@ export default function AiTipsView({ tips }: Props) {
         <View style={styles.headerIcon}>
           <Ionicons name="bulb-outline" size={16} color={colors.white} />
         </View>
-        <Text style={styles.headerTitle}>Conseils IA</Text>
+        <Text style={styles.headerTitle}>Nos conseils</Text>
       </View>
 
       <Card style={[styles.outlookCard, { backgroundColor: outlook.bg }]}>

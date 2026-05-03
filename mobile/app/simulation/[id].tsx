@@ -22,6 +22,7 @@ import AiTipsView from '../../components/AiTipsView';
 import PriceAlertView from '../../components/PriceAlertView';
 import FlexibleDatesView from '../../components/FlexibleDatesView';
 import CollabView from '../../components/CollabView';
+import TripGeneratorWizard, { TripGeneratorOptions } from '../../components/TripGeneratorWizard';
 import { colors, fontSize, radius, spacing } from '../../lib/theme';
 
 const WEB_BASE = 'https://smartbudget-travel.netlify.app';
@@ -34,6 +35,7 @@ export default function SimulationDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [heroImage, setHeroImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function SimulationDetail() {
     } catch {}
   };
 
-  const handleGenerateItinerary = async () => {
+  const handleOpenWizard = () => {
     if (!sim) return;
     if (!user?.isPremium) {
       Alert.alert(
@@ -75,17 +77,23 @@ export default function SimulationDetail() {
         'La génération d’itinéraire est une fonctionnalité Premium.',
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Voir Premium', onPress: () => router.push('/subscription/index' as any) },
+          { text: 'Voir Premium', onPress: () => router.push('/subscription' as any) },
         ],
       );
       return;
     }
+    setWizardOpen(true);
+  };
+
+  const handleGenerateItinerary = async (options: TripGeneratorOptions) => {
+    if (!sim) return;
     setGenerating(true);
     try {
-      const { itinerary } = await api.generateTrip(sim.id);
+      const { itinerary } = await api.generateTrip(sim.id, options);
       setSim({ ...sim, itinerary });
     } catch (e: any) {
       Alert.alert('Erreur', e?.error || 'Impossible de générer l’itinéraire');
+      throw e;
     } finally {
       setGenerating(false);
     }
@@ -243,15 +251,21 @@ export default function SimulationDetail() {
               <Ionicons name="map-outline" size={28} color={colors.primary[700]} />
               <Text style={styles.itineraryEmptyTitle}>Itinéraire jour par jour</Text>
               <Text style={styles.itineraryEmptyDesc}>
-                Génère un itinéraire personnalisé par IA avec des activités, des restaurants et des bons plans pour chaque jour.
+                Génère un itinéraire personnalisé avec des activités, des restaurants et des bons plans pour chaque jour.
               </Text>
-              <Button onPress={handleGenerateItinerary} loading={generating} fullWidth style={{ marginTop: spacing.md }}>
+              <Button onPress={handleOpenWizard} loading={generating} fullWidth style={{ marginTop: spacing.md }}>
                 {user?.isPremium ? 'Générer mon itinéraire' : 'Disponible avec Premium'}
               </Button>
             </Card>
           )}
         </ScrollView>
       )}
+
+      <TripGeneratorWizard
+        visible={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onGenerate={handleGenerateItinerary}
+      />
     </SafeAreaView>
   );
 }
@@ -262,7 +276,7 @@ function ConfidenceBadge({ confidence }: { confidence: 'high' | 'medium' | 'low'
   const map = {
     high:   { label: 'Précision élevée', color: colors.emerald[500], bg: '#D1FAE5' },
     medium: { label: 'Précision moyenne', color: colors.amber[500],   bg: colors.amber[100] },
-    low:    { label: 'Estimation IA',     color: colors.gray[500],    bg: colors.gray[100] },
+    low:    { label: 'Estimation',     color: colors.gray[500],    bg: colors.gray[100] },
   }[confidence];
   return (
     <View style={[styles.confBadge, { backgroundColor: map.bg }]}>

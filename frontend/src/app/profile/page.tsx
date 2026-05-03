@@ -157,7 +157,7 @@ export default function ProfilePage() {
                   <div className="p-2 rounded-xl bg-amber-100 text-amber-700"><Crown className="h-5 w-5" /></div>
                   <div className="flex-1">
                     <h4 className="font-bold text-gray-900">Passez Premium</h4>
-                    <p className="text-sm text-gray-600 mt-1">Itinéraire IA, filtres avancés, dates flexibles, suivi des prix.</p>
+                    <p className="text-sm text-gray-600 mt-1">Itinéraire personnalisé, filtres avancés, dates flexibles, suivi des prix.</p>
                     <Button variant="primary" size="sm" className="mt-3 w-full" onClick={handleUpgrade}>
                       <Sparkles className="h-4 w-4" /> Découvrir Premium
                     </Button>
@@ -250,7 +250,7 @@ export default function ProfilePage() {
                       {user.premiumPlan === 'annual' ? 'Plan Annuel actif' : user.premiumPlan === 'oneshot' ? 'Plan 1 voyage actif' : 'Plan Premium actif'}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">Tu bénéficies de toutes les fonctionnalités avancées : IA illimitée, itinéraires détaillés, filtres premium, suivi des prix, export PDF.</p>
+                  <p className="text-sm text-gray-600 mb-2">Tu bénéficies de toutes les fonctionnalités avancées : itinéraires illimités, plans détaillés, filtres premium, suivi des prix, export PDF.</p>
                   {user.premiumUntil && (
                     <p className="text-xs text-amber-700 font-medium">
                       {(() => {

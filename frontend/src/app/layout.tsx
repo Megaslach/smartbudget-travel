@@ -6,7 +6,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'SmartBudget Travel — Simulez votre budget voyage',
-  description: 'Simulez votre budget de voyage et générez un itinéraire personnalisé avec l\'IA.',
+  description: 'Simulez votre budget de voyage et générez un itinéraire personnalisé.',
   icons: { icon: '/favicon.svg' },
 };
 

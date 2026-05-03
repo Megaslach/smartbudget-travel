@@ -67,7 +67,7 @@ export default function ProfileScreen() {
         </Card>
 
         <Pressable
-          onPress={() => router.push('/subscription/index' as any)}
+          onPress={() => router.push('/subscription' as any)}
           style={({ pressed }) => [styles.subBanner, pressed && { opacity: 0.85 }]}
         >
           <View style={styles.subBannerLeft}>
@@ -81,7 +81,7 @@ export default function ProfileScreen() {
               <Text style={styles.subBannerSub}>
                 {user?.isPremium
                   ? `${user.premiumPlan === 'annual' ? 'Abonnement annuel' : 'Pass one-shot'} · gérer / résilier`
-                  : 'Itinéraire IA, comparateur, alertes de prix et plus encore'}
+                  : 'Itinéraire personnalisé, comparateur, alertes de prix et plus encore'}
               </Text>
             </View>
           </View>

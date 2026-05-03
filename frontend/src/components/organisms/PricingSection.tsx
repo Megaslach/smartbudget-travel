@@ -12,15 +12,15 @@ const FREE_FEATURES = [
   'Suggestions de vols, hôtels & activités',
   'Liens de réservation directs (Booking, Skyscanner, GetYourGuide)',
   'Historique des simulations',
-  '1 itinéraire IA par mois',
+  '1 itinéraire personnalisé par mois',
 ];
 
 const PREMIUM_FEATURES = [
   'Tout le plan gratuit',
-  'Itinéraires IA illimités avec filtres avancés',
+  'Itinéraires illimités avec filtres avancés',
   'Choix du quartier / type d\'hébergement / classe de vol',
   'Style de restauration + centres d\'intérêt personnalisés',
-  'Budget max avec optimisation IA',
+  'Budget max avec optimisation avancée',
   'Alertes prix automatiques',
   'Export PDF de l\'itinéraire',
   'Comparateur de destinations',

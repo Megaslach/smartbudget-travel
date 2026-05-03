@@ -10,7 +10,7 @@ import Button from '../../components/Button';
 import { colors, fontSize, radius, spacing } from '../../lib/theme';
 
 const PERKS: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }[] = [
-  { icon: 'sparkles-outline',     title: 'Itinéraire IA personnalisé',     desc: 'Jour par jour, adapté à ton style et ton budget' },
+  { icon: 'sparkles-outline',     title: 'Itinéraire personnalisé',         desc: 'Jour par jour, adapté à ton style et ton budget' },
   { icon: 'options-outline',      title: 'Filtres avancés',                 desc: 'Style, rythme, hébergement, alimentation, transport…' },
   { icon: 'git-compare-outline',  title: 'Comparateur',                      desc: 'Compare jusqu\u00e0 4 destinations en parallèle' },
   { icon: 'notifications-outline',title: 'Alertes de prix',                  desc: 'On te prévient si le prix bouge' },
@@ -133,7 +133,7 @@ export default function SubscriptionScreen() {
               <Ionicons name="sparkles" size={32} color={colors.amber[500]} />
               <Text style={styles.heroTitle}>Passe à Premium</Text>
               <Text style={styles.heroDesc}>
-                Débloque l\u2019itinéraire IA personnalisé, le comparateur, les alertes de prix et plus encore.
+                Débloque l\u2019itinéraire personnalisé, le comparateur, les alertes de prix et plus encore.
               </Text>
             </View>
 

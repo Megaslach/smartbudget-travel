@@ -132,7 +132,7 @@ export default function SharedSimulationPage() {
         {/* Day-by-day itinerary */}
         {sim.itinerary && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mb-6">
-            <ItineraryCard itinerary={sim.itinerary} />
+            <ItineraryCard itinerary={sim.itinerary} destination={sim.destination} />
           </motion.div>
         )}
 
