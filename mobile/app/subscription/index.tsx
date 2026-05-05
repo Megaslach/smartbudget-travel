@@ -75,7 +75,7 @@ export default function SubscriptionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <Stack.Screen options={{ title: 'Mon abonnement' }} />
       <ScrollView contentContainerStyle={styles.scroll}>
         {isPremium ? (
@@ -94,18 +94,26 @@ export default function SubscriptionScreen() {
               </View>
 
               {expiresAt && (
-                <View style={styles.expiryRow}>
-                  <Ionicons name="time-outline" size={16} color={colors.amber[500]} />
-                  <Text style={styles.expiryText}>
-                    {plan === 'annual' ? 'Renouvellement' : 'Expire'} le{' '}
-                    <Text style={{ fontWeight: '700' }}>
-                      {expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                <>
+                  <View style={styles.expiryRow}>
+                    <Ionicons name="time-outline" size={16} color={colors.white} />
+                    <Text style={styles.expiryText}>
+                      {plan === 'annual' ? 'Prochain renouvellement' : 'Accès Premium jusqu\'au'}
+                      {'\n'}
+                      <Text style={{ fontWeight: '700', fontSize: 16 }}>
+                        {expiresAt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </Text>
+                      {daysLeft > 0 && (
+                        <Text style={{ color: 'rgba(255,255,255,0.85)' }}>{'  ·  '}{daysLeft} jour{daysLeft > 1 ? 's' : ''} restant{daysLeft > 1 ? 's' : ''}</Text>
+                      )}
                     </Text>
-                    {daysLeft > 0 && (
-                      <Text style={{ color: colors.gray[500] }}>  ·  {daysLeft}j restants</Text>
-                    )}
-                  </Text>
-                </View>
+                  </View>
+                  {plan === 'oneshot' && (
+                    <Text style={[styles.portalHint, { textAlign: 'left', marginTop: 8 }]}>
+                      Le pass one-shot expire automatiquement. Tu pourras racheter un pass ou prendre l&apos;abonnement annuel à ce moment-là.
+                    </Text>
+                  )}
+                </>
               )}
 
               <Button

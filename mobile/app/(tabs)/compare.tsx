@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
@@ -18,6 +18,7 @@ export default function CompareScreen() {
   const [endDate, setEndDate] = useState('');
   const [people, setPeople] = useState(2);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [result, setResult] = useState<CompareResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +79,13 @@ export default function CompareScreen() {
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          refreshControl={result ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => { setRefreshing(true); await handleCompare(); setRefreshing(false); }}
+              tintColor={colors.primary[700]}
+            />
+          ) : undefined}
         >
           <Text style={styles.title}>Comparer des destinations</Text>
           <Text style={styles.subtitle}>Compare jusqu&apos;à 4 destinations en parallèle.</Text>

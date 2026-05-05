@@ -5,7 +5,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
-import { colors } from '../lib/theme';
+import BackButton from '../components/BackButton';
+import { colors, fontSize } from '../lib/theme';
 
 function RootNav() {
   const { user, isLoading } = useAuth();
@@ -31,12 +32,22 @@ function RootNav() {
     );
   }
 
+  const stackHeaderOptions = {
+    headerShown: true,
+    headerStyle: { backgroundColor: colors.sand[50] },
+    headerShadowVisible: false,
+    headerTitleStyle: { fontWeight: '700' as const, fontSize: fontSize.base, color: colors.gray[900] },
+    headerTintColor: colors.primary[700],
+    headerLeft: () => <BackButton />,
+    headerBackVisible: false,
+  };
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="simulation/[id]" options={{ headerShown: true, title: 'Détails' }} />
-      <Stack.Screen name="subscription" options={{ headerShown: true, title: 'Mon abonnement' }} />
+      <Stack.Screen name="simulation/[id]" options={{ ...stackHeaderOptions, title: 'Détails' }} />
+      <Stack.Screen name="subscription" options={{ ...stackHeaderOptions, title: 'Mon abonnement' }} />
     </Stack>
   );
 }

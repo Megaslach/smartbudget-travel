@@ -153,7 +153,11 @@ export default function CollabView({ simulationId, isOwner, currentUserId }: Pro
         <Text style={styles.subHeader}>Commentaires</Text>
         <View style={{ gap: 10, marginTop: 8 }}>
           {comments.length === 0 ? (
-            <Text style={styles.emptyText}>Aucun commentaire pour l&apos;instant.</Text>
+            <View style={{ alignItems: 'center', paddingVertical: spacing.lg, gap: 6 }}>
+              <Ionicons name="chatbubbles-outline" size={28} color={colors.gray[300]} />
+              <Text style={styles.emptyText}>Pas encore de discussion</Text>
+              <Text style={[styles.emptyText, { fontSize: 11, color: colors.gray[400] }]}>Lance la conversation avec tes coéquipiers de voyage</Text>
+            </View>
           ) : (
             comments.map((c) => {
               const canDelete = c.author.id === currentUserId || isOwner;

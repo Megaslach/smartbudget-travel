@@ -43,6 +43,7 @@ export default function Autocomplete({
   const [results, setResults] = useState<(DestinationItem | AirportItem)[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errored, setErrored] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync external value into local state
@@ -57,6 +58,7 @@ export default function Autocomplete({
       return;
     }
     setLoading(true);
+    setErrored(false);
     debounceRef.current = setTimeout(async () => {
       try {
         if (mode === 'destination') {
@@ -68,6 +70,7 @@ export default function Autocomplete({
         }
       } catch {
         setResults([]);
+        setErrored(true);
       } finally {
         setLoading(false);
       }
@@ -129,26 +132,38 @@ export default function Autocomplete({
         )}
       </View>
 
-      {open && results.length > 0 && (
+      {open && (results.length > 0 || (query.length >= 2 && !loading)) && (
         <View style={styles.dropdown}>
-          <FlatList
-            data={results}
-            keyExtractor={(item, idx) => `${idx}-${(item as any).code || (item as any).name}`}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => handleSelect(item)}
-                style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.primary[50] }]}
-              >
-                {mode === 'destination' ? (
-                  <DestinationRow item={item as DestinationItem} />
-                ) : (
-                  <AirportRow item={item as AirportItem} />
-                )}
-              </Pressable>
-            )}
-            style={{ maxHeight: 240 }}
-          />
+          {results.length > 0 ? (
+            <FlatList
+              data={results}
+              keyExtractor={(item, idx) => `${idx}-${(item as any).code || (item as any).name}`}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => handleSelect(item)}
+                  style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.primary[50] }]}
+                >
+                  {mode === 'destination' ? (
+                    <DestinationRow item={item as DestinationItem} />
+                  ) : (
+                    <AirportRow item={item as AirportItem} />
+                  )}
+                </Pressable>
+              )}
+              style={{ maxHeight: 240 }}
+            />
+          ) : errored ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="cloud-offline-outline" size={20} color={colors.red[400]} />
+              <Text style={styles.emptyText}>Recherche indisponible. Vérifie ta connexion.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={20} color={colors.gray[400]} />
+              <Text style={styles.emptyText}>Aucun résultat pour « {query} »</Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -223,4 +238,6 @@ const styles = StyleSheet.create({
   popText: { fontSize: 11, color: colors.amber[500] },
   codeBadge: { backgroundColor: colors.primary[100], paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   codeText: { fontSize: 11, fontWeight: '700', color: colors.primary[700] },
+  emptyState: { padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  emptyText: { fontSize: fontSize.sm, color: colors.gray[500], flex: 1 },
 });

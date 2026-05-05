@@ -4,7 +4,7 @@ import {
   ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
@@ -34,6 +34,10 @@ export default function TripsScreen() {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  // Re-fetch every time the tab is focused — so a fresh simulation
+  // appears immediately without needing to relaunch the app.
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onRefresh = async () => {
     setRefreshing(true);

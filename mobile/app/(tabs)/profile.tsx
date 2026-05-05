@@ -127,9 +127,11 @@ function EditEmailModal({ onClose, currentEmail, onSaved }: any) {
   const handleSubmit = async () => {
     setError(null);
     if (!email) { setError('Email requis'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Email invalide'); return; }
+    if (email.trim() === currentEmail) { setError('Identique à l\'email actuel'); return; }
     setLoading(true);
     try {
-      await api.updateProfile({ email });
+      await api.updateProfile({ email: email.trim() });
       await onSaved();
       onClose();
     } catch (e: any) {

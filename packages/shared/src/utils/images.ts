@@ -30,6 +30,22 @@ const stripActivityVerbs = (s: string) =>
 const loremFlickr = (keywords: string) =>
   `https://loremflickr.com/600/400/${encodeURIComponent(keywords.replace(/\s+/g, ','))}`;
 
+// Hand-picked category fallbacks (Pexels CDN URLs that always load).
+// Used when the activity-specific image fails or returns nothing useful.
+const CATEGORY_FALLBACKS: Record<string, string> = {
+  sight:     'https://images.pexels.com/photos/3811807/pexels-photo-3811807.jpeg?auto=compress&w=940',
+  food:      'https://images.pexels.com/photos/1640772/pexels-photo-1640772.jpeg?auto=compress&w=940',
+  activity:  'https://images.pexels.com/photos/2387873/pexels-photo-2387873.jpeg?auto=compress&w=940',
+  nature:    'https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg?auto=compress&w=940',
+  shopping:  'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg?auto=compress&w=940',
+  nightlife: 'https://images.pexels.com/photos/1267697/pexels-photo-1267697.jpeg?auto=compress&w=940',
+  transport: 'https://images.pexels.com/photos/1303081/pexels-photo-1303081.jpeg?auto=compress&w=940',
+  default:   'https://images.pexels.com/photos/2245436/pexels-photo-2245436.jpeg?auto=compress&w=940',
+};
+
+export const getCategoryFallback = (category?: string) =>
+  CATEGORY_FALLBACKS[category || 'default'] || CATEGORY_FALLBACKS.default;
+
 async function fetchPexels(key: string | undefined, query: string): Promise<string | null> {
   if (!key) return null;
   try {

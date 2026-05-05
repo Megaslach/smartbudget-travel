@@ -43,14 +43,20 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
 
     console.log(`[simulate] budget done in ${Date.now() - t0}ms`);
 
-    const remaining = Math.max(3000, 55000 - (Date.now() - t0));
-    const tipsTimeout = Math.min(remaining - 2000, 12000);
+    // We have 120s total (Vercel Pro maxDuration). Budget already ate some.
+    // Give tips 80% of the remaining budget, but at least 15s, capped at 60s.
+    const elapsed = Date.now() - t0;
+    const remaining = Math.max(15000, 110000 - elapsed);
+    const tipsTimeout = Math.min(60000, Math.floor(remaining * 0.8));
 
     const aiTips = await raceTimeout(
       generateSmartTips({
         destination, departureCity, startDate, endDate, duration, people,
         budget: budgetEstimate,
         isPremium: user ? isPremiumActive(user) : false,
+      }).catch((err) => {
+        console.error('[simulate] tips threw:', err?.message || err);
+        return DEFAULT_TIPS;
       }),
       tipsTimeout,
       DEFAULT_TIPS,

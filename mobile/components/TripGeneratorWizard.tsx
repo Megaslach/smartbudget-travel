@@ -312,7 +312,7 @@ export default function TripGeneratorWizard({ visible, onClose, onGenerate }: Pr
             {step < STEPS_TOTAL && (
               <>
                 <View style={{ flex: 1 }}>
-                  <Button onPress={skip} variant="ghost" fullWidth>Passer</Button>
+                  <Button onPress={skip} variant="ghost" fullWidth>Passer cette étape</Button>
                 </View>
                 <View style={{ flex: 2 }}>
                   <Button onPress={next} fullWidth>Suivant →</Button>

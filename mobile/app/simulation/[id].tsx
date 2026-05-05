@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   ScrollView, View, Text, StyleSheet, ActivityIndicator, Pressable,
-  Linking, Image, Alert, Share, ImageBackground,
+  Linking, Image, Alert, Share, ImageBackground, RefreshControl,
 } from 'react-native';
-import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
+import { useCallback } from 'react';
+import { useLocalSearchParams, Stack, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../lib/api';
@@ -44,16 +45,32 @@ export default function SimulationDetail() {
     }
   }, [sim?.destination]);
 
-  const load = () => {
-    if (!id) return;
-    setLoading(true);
-    api.getSimulationDetail(id)
-      .then(({ simulation }) => setSim(simulation))
-      .catch((e) => setError(e?.error || 'Erreur de chargement'))
-      .finally(() => setLoading(false));
-  };
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { load(); }, [id]);
+  const load = useCallback(async () => {
+    if (!id) return;
+    try {
+      const { simulation } = await api.getSimulationDetail(id);
+      setSim(simulation);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.error || 'Erreur de chargement');
+    }
+  }, [id]);
+
+  useEffect(() => {
+    setLoading(true);
+    load().finally(() => setLoading(false));
+  }, [load]);
+
+  // Auto-refresh on focus (so collab comments / new itinerary appear)
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
 
   const budget: BudgetEstimate | null = sim?.budgetData
     || (typeof sim?.budget === 'object' ? (sim.budget as BudgetEstimate) : null);
@@ -100,7 +117,7 @@ export default function SimulationDetail() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={[]}>
       <Stack.Screen options={{
         title: sim?.destination || 'Voyage',
         headerRight: () => sim ? (
@@ -115,10 +132,17 @@ export default function SimulationDetail() {
         </View>
       ) : error || !sim ? (
         <View style={styles.center}>
-          <Text style={{ color: colors.red[500] }}>{error || 'Voyage introuvable'}</Text>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.gray[300]} />
+          <Text style={{ color: colors.red[500], marginTop: 12, textAlign: 'center' }}>{error || 'Voyage introuvable'}</Text>
+          <Button onPress={() => { setLoading(true); load().finally(() => setLoading(false)); }} variant="outline" style={{ marginTop: 16 }}>
+            Réessayer
+          </Button>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary[700]} />}
+        >
           <ImageBackground
             source={heroImage ? { uri: heroImage } : undefined}
             style={styles.hero}
@@ -332,6 +356,7 @@ function FlightRow({ flight, people }: { flight: FlightOption; people: number })
 
 function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number }) {
   const [resolvedImage, setResolvedImage] = useState<string | null>(hotel.imageUrl ?? null);
+  const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     if (hotel.imageUrl) { setResolvedImage(hotel.imageUrl); return; }
@@ -347,8 +372,13 @@ function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number })
     <Pressable onPress={() => hotel.bookingUrl && Linking.openURL(hotel.bookingUrl)}>
       <Card noPadding style={{ flexDirection: 'row', overflow: 'hidden', alignItems: 'stretch' }}>
         <View style={styles.hotelImageBox}>
-          {resolvedImage ? (
-            <Image source={{ uri: resolvedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          {resolvedImage && !errored ? (
+            <Image
+              source={{ uri: resolvedImage }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+              onError={() => setErrored(true)}
+            />
           ) : (
             <Ionicons name="bed" size={28} color={colors.indigo[500]} />
           )}
@@ -375,7 +405,9 @@ function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number })
 }
 
 function ActivityCard({ activity, people, destination }: { activity: ActivityOption; people: number; destination: string }) {
-  const [resolvedImage, setResolvedImage] = useState<string | null>(activity.imageUrl ?? null);
+  const fallbackUrl = 'https://images.pexels.com/photos/2245436/pexels-photo-2245436.jpeg?auto=compress&w=940';
+  const [resolvedImage, setResolvedImage] = useState<string>(activity.imageUrl || fallbackUrl);
+  const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     if (activity.imageUrl) {
@@ -384,22 +416,28 @@ function ActivityCard({ activity, people, destination }: { activity: ActivityOpt
     }
     let cancelled = false;
     getActivityImage(activity.name, destination, activity.bookingUrl).then((img) => {
-      if (!cancelled) setResolvedImage(img);
-    });
+      if (!cancelled && img) setResolvedImage(img);
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, [activity.imageUrl, activity.name, activity.bookingUrl, destination]);
+
+  const handleImageError = () => {
+    if (!errored) {
+      setErrored(true);
+      setResolvedImage(fallbackUrl);
+    }
+  };
 
   return (
     <Pressable onPress={() => activity.bookingUrl && Linking.openURL(activity.bookingUrl)}>
       <Card noPadding style={{ overflow: 'hidden' }}>
         <View style={styles.activityImageBox}>
-          {resolvedImage ? (
-            <Image source={{ uri: resolvedImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-          ) : (
-            <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="image-outline" size={28} color={colors.gray[300]} />
-            </View>
-          )}
+          <Image
+            source={{ uri: resolvedImage }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            onError={handleImageError}
+          />
           <View style={styles.activityPriceBadge}>
             <Text style={styles.activityPriceText}>{formatCurrency(activity.price)}/pers</Text>
           </View>
