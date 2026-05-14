@@ -42,6 +42,12 @@ model Simulation {
   priceAlertThreshold  Float                    @default(10)
   lastPriceTotal       Float?
   lastPriceCheckAt     DateTime?
+  // Multi-stop trips (e.g. Tokyo + Kyoto + Osaka). JSON array of { name, nights }.
+  stops                String?                  @db.Text
+  // Host stay flag — when true, accommodation cost is set to 0.
+  hostStay             Boolean                  @default(false)
+  // Radius (km) around the arrival city for activities/hotels search.
+  searchRadiusKm       Int                      @default(50)
   user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   snapshots            PriceSnapshot[]
   collaborators        SimulationCollaborator[]

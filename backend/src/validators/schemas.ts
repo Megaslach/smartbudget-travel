@@ -16,6 +16,15 @@ export const simulationSchema = z.object({
   startDate: z.string().min(1, 'Date de départ requise'),
   endDate: z.string().min(1, 'Date de retour requise'),
   people: z.number().int().min(1, 'Minimum 1 personne').max(20, 'Maximum 20 personnes'),
+  // Multi-stop: list of extra cities to visit. Each with optional nights.
+  stops: z.array(z.object({
+    name: z.string().min(2),
+    nights: z.number().int().min(1).max(60).optional(),
+  })).max(8, 'Maximum 8 escales').optional(),
+  // Accommodation toggle: free stay at someone's place
+  hostStay: z.boolean().optional(),
+  // Radius (km) around the arrival city for activities/hotels (default 50km)
+  searchRadiusKm: z.number().int().min(5).max(300).optional(),
   // Premium filters (optional)
   premiumFilters: z.object({
     accommodationArea: z.string().optional(),

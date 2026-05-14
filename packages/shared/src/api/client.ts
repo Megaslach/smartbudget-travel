@@ -101,11 +101,35 @@ export class ApiClient {
   simulate(data: {
     destination: string; departureCity: string; startDate: string; endDate: string;
     people: number; premiumFilters?: PremiumFilters;
+    stops?: { name: string; nights?: number }[];
+    hostStay?: boolean;
+    searchRadiusKm?: number;
   }): Promise<SimulationResponse> {
     return this.request<SimulationResponse>('/simulate', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  updateHostStay(simulationId: string, hostStay: boolean): Promise<{ simulation: Simulation }> {
+    return this.request(`/simulation/${simulationId}/host-stay`, {
+      method: 'PATCH',
+      body: JSON.stringify({ hostStay }),
+    });
+  }
+
+  getNearestAirport(lat: number, lng: number): Promise<{
+    nearest: null | {
+      airport: { code: string; name: string };
+      cityName: string;
+      country: string;
+      distanceKm: number;
+      transport: {
+        options: { mode: string; icon: string; minPrice: number; maxPrice: number; minMinutes: number; maxMinutes: number; note: string }[];
+      };
+    };
+  }> {
+    return this.request(`/airports/nearest?lat=${lat}&lng=${lng}`);
   }
 
   getUserSimulations(): Promise<{ simulations: Simulation[] }> {

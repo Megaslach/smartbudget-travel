@@ -202,6 +202,11 @@ export interface PriceComparison {
   advice: string;
 }
 
+export interface TripStop {
+  name: string;
+  nights?: number;
+}
+
 export interface Simulation {
   id: string;
   destination: string;
@@ -221,6 +226,9 @@ export interface Simulation {
   priceAlertThreshold?: number;
   lastPriceTotal?: number | null;
   lastPriceCheckAt?: string | null;
+  stops?: TripStop[];
+  hostStay?: boolean;
+  searchRadiusKm?: number;
 }
 
 export interface CompareResult {

@@ -32,7 +32,7 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
       return;
     }
 
-    const { destination, departureCity, startDate, endDate, people, premiumFilters } = validation.data;
+    const { destination, departureCity, startDate, endDate, people, premiumFilters, stops, hostStay, searchRadiusKm } = validation.data;
     const start = new Date(startDate);
     const end = new Date(endDate);
     const duration = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
@@ -40,6 +40,16 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
 
     const budgetEstimate = await estimateBudget({ destination, departureCity, startDate, endDate, duration, people, premiumFilters });
+
+    // Host stay → zero out accommodation cost
+    if (hostStay && budgetEstimate.accommodation) {
+      const savings = budgetEstimate.accommodation.total;
+      budgetEstimate.accommodation.total = 0;
+      budgetEstimate.accommodation.avgPerNight = 0;
+      budgetEstimate.accommodation.note = `🏠 Logement chez l'habitant — économie de ${Math.round(savings)}€`;
+      budgetEstimate.accommodation.options = [];
+      budgetEstimate.total = Math.max(0, budgetEstimate.total - savings);
+    }
 
     console.log(`[simulate] budget done in ${Date.now() - t0}ms`);
 
@@ -77,6 +87,9 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
         budgetData: JSON.stringify(budgetEstimate),
         aiTips: JSON.stringify(aiTips),
         itinerary: null,
+        stops: stops && stops.length > 0 ? JSON.stringify(stops) : null,
+        hostStay: !!hostStay,
+        searchRadiusKm: searchRadiusKm ?? 50,
       },
     });
 
@@ -95,6 +108,9 @@ export const simulate = async (req: AuthRequest, res: Response): Promise<void> =
         aiTips,
         itinerary: null,
         createdAt: simulation.createdAt,
+        stops: stops ?? [],
+        hostStay: !!hostStay,
+        searchRadiusKm: searchRadiusKm ?? 50,
       },
     });
   } catch (error) {
@@ -181,11 +197,82 @@ export const getSimulationDetail = async (req: AuthRequest, res: Response): Prom
         budgetData: simulation.budgetData ? JSON.parse(simulation.budgetData) : null,
         aiTips: simulation.aiTips ? JSON.parse(simulation.aiTips) : null,
         itinerary: simulation.itinerary ? JSON.parse(simulation.itinerary) : null,
+        stops: simulation.stops ? JSON.parse(simulation.stops) : [],
+        hostStay: simulation.hostStay,
+        searchRadiusKm: simulation.searchRadiusKm,
         role: isOwner ? 'owner' : 'editor',
       },
     });
   } catch (error) {
     console.error('GetSimulationDetail error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Toggle host stay on/off — recomputes budget when activated. */
+export const updateHostStay = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { hostStay } = req.body as { hostStay: boolean };
+
+    const sim = await prisma.simulation.findUnique({ where: { id } });
+    if (!sim || sim.userId !== req.userId) {
+      res.status(404).json({ error: 'Simulation non trouvée' });
+      return;
+    }
+
+    let budget = sim.budgetData ? JSON.parse(sim.budgetData) : null;
+    let newTotal = sim.budget;
+
+    if (budget?.accommodation) {
+      if (hostStay) {
+        // Save original cost so we can restore later
+        budget._originalAccommodation = budget._originalAccommodation || {
+          total: budget.accommodation.total,
+          avgPerNight: budget.accommodation.avgPerNight,
+          options: budget.accommodation.options,
+          note: budget.accommodation.note,
+        };
+        const savings = budget.accommodation.total;
+        budget.accommodation.total = 0;
+        budget.accommodation.avgPerNight = 0;
+        budget.accommodation.options = [];
+        budget.accommodation.note = `🏠 Logement chez l'habitant — économie de ${Math.round(savings)}€`;
+        budget.total = Math.max(0, budget.total - savings);
+        newTotal = budget.total;
+      } else if (budget._originalAccommodation) {
+        // Restore
+        const orig = budget._originalAccommodation;
+        budget.accommodation.total = orig.total;
+        budget.accommodation.avgPerNight = orig.avgPerNight;
+        budget.accommodation.options = orig.options;
+        budget.accommodation.note = orig.note;
+        budget.total = budget.total + orig.total;
+        delete budget._originalAccommodation;
+        newTotal = budget.total;
+      }
+    }
+
+    const updated = await prisma.simulation.update({
+      where: { id },
+      data: {
+        hostStay,
+        budget: newTotal,
+        budgetData: budget ? JSON.stringify(budget) : sim.budgetData,
+      },
+    });
+
+    res.json({
+      simulation: {
+        ...updated,
+        budgetData: updated.budgetData ? JSON.parse(updated.budgetData) : null,
+        aiTips: updated.aiTips ? JSON.parse(updated.aiTips) : null,
+        itinerary: updated.itinerary ? JSON.parse(updated.itinerary) : null,
+        stops: updated.stops ? JSON.parse(updated.stops) : [],
+      },
+    });
+  } catch (error) {
+    console.error('UpdateHostStay error:', error);
     res.status(500).json({ error: 'Erreur' });
   }
 };

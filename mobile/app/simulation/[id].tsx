@@ -171,6 +171,33 @@ export default function SimulationDetail() {
                 )}
               </Card>
 
+              {/* Host stay toggle */}
+              <HostStayToggle
+                simulationId={sim.id}
+                value={!!sim.hostStay}
+                onChange={(v) => {
+                  setSim((s) => s ? { ...s, hostStay: v } : s);
+                  load();
+                }}
+              />
+
+              {/* Multi-stop info */}
+              {sim.stops && sim.stops.length > 0 && (
+                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary[500] + '20', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="map-outline" size={20} color={colors.primary[500]} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text.primary, fontWeight: '700', fontSize: fontSize.sm }}>
+                      Voyage multi-villes
+                    </Text>
+                    <Text style={{ color: colors.text.secondary, fontSize: fontSize.xs, marginTop: 2 }}>
+                      {sim.destination} → {sim.stops.map(s => s.name).join(' → ')}
+                    </Text>
+                  </View>
+                </Card>
+              )}
+
               {/* Flights */}
               {budget.flights?.options?.length > 0 && (
                 <Section title="Vols" icon="airplane" badge={budget.flights.isRealData ? 'Prix réels' : 'Prix indicatif'} badgeOk={budget.flights.isRealData}>
@@ -295,6 +322,39 @@ export default function SimulationDetail() {
 }
 
 /* --- Sub-components --- */
+
+function HostStayToggle({ simulationId, value, onChange }: { simulationId: string; value: boolean; onChange: (v: boolean) => void }) {
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await api.updateHostStay(simulationId, !value);
+      onChange(!value);
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.error || 'Impossible de mettre à jour');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Pressable onPress={toggle} disabled={busy} style={[styles.hostStay, value && styles.hostStayActive]}>
+      <View style={[styles.hostStayIcon, value && { backgroundColor: colors.primary[500] }]}>
+        <Ionicons name="home-outline" size={20} color={value ? colors.white : colors.primary[500]} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.hostStayTitle}>Loger chez quelqu&apos;un</Text>
+        <Text style={styles.hostStayDesc}>
+          {value
+            ? '✅ Hébergement gratuit appliqué — économie incluse'
+            : 'Active si tu es logé par un proche : on enlève les coûts d\u2019hébergement.'}
+        </Text>
+      </View>
+      <View style={[styles.toggleTrack, value && { backgroundColor: colors.primary[500] }]}>
+        <View style={[styles.toggleKnob, value && { alignSelf: 'flex-end' }]} />
+      </View>
+    </Pressable>
+  );
+}
 
 function ConfidenceBadge({ confidence }: { confidence: 'high' | 'medium' | 'low' }) {
   const map = {
@@ -592,6 +652,14 @@ const styles = StyleSheet.create({
   subHeader: { fontSize: fontSize.sm, fontWeight: '700', color: colors.gray[600], marginTop: spacing.sm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
 
   itineraryEmpty: { alignItems: 'center', gap: 6 },
+
+  hostStay: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.xl, backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.border },
+  hostStayActive: { borderColor: colors.primary[500], backgroundColor: colors.primary[500] + '15' },
+  hostStayIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary[500] + '20', alignItems: 'center', justifyContent: 'center' },
+  hostStayTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.text.primary },
+  hostStayDesc: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: 2, lineHeight: 16 },
+  toggleTrack: { width: 46, height: 26, borderRadius: 13, backgroundColor: colors.bgSubtle, padding: 2 },
+  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.white },
   itineraryEmptyTitle: { fontSize: fontSize.lg, fontWeight: '800', color: colors.gray[900] },
   itineraryEmptyDesc: { fontSize: fontSize.sm, color: colors.gray[600], textAlign: 'center', lineHeight: 20 },
 });

@@ -30,10 +30,17 @@ export default function SearchScreen() {
   const [people, setPeople] = useState(2);
   const [budget, setBudget] = useState(800);
   const [tripType, setTripType] = useState<string | null>(null);
+  const [hostStay, setHostStay] = useState(false);
+  const [stops, setStops] = useState<string[]>([]);
+  const [searchRadiusKm, setSearchRadiusKm] = useState(50);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const addStop = () => { if (stops.length < 5) setStops([...stops, '']); };
+  const updateStop = (i: number, v: string) => setStops(stops.map((s, idx) => idx === i ? v : s));
+  const removeStop = (i: number) => setStops(stops.filter((_, idx) => idx !== i));
 
   const handleSubmit = async () => {
     setError(null);
@@ -43,7 +50,13 @@ export default function SearchScreen() {
     if (new Date(endDate) <= new Date(startDate)) { setError('Retour après le départ'); return; }
     setLoading(true);
     try {
-      const result = await api.simulate({ destination, departureCity, startDate, endDate, people });
+      const cleanStops = stops.map(s => s.trim()).filter(s => s.length >= 2).map(name => ({ name }));
+      const result = await api.simulate({
+        destination, departureCity, startDate, endDate, people,
+        hostStay,
+        stops: cleanStops.length > 0 ? cleanStops : undefined,
+        searchRadiusKm,
+      });
       router.push(`/simulation/${result.simulation.id}` as any);
     } catch (err: any) {
       setError(err?.error || 'Erreur lors de la recherche');
@@ -135,6 +148,66 @@ export default function SearchScreen() {
               </View>
             </Card>
 
+            <Card label="Étapes & escales (optionnel)" right={stops.length > 0 ? `${stops.length} étape${stops.length > 1 ? 's' : ''}` : undefined}>
+              <Text style={styles.stopsHint}>
+                Ajoute des villes à visiter en plus de la destination principale. Idéal pour les road trips et les voyages multi-villes.
+              </Text>
+              {stops.map((stop, i) => (
+                <View key={i} style={styles.stopRow}>
+                  <View style={{ flex: 1 }}>
+                    <Autocomplete
+                      mode="destination"
+                      placeholder={`Étape ${i + 1}`}
+                      value={stop}
+                      onChange={(v) => updateStop(i, v)}
+                    />
+                  </View>
+                  <Pressable onPress={() => removeStop(i)} hitSlop={8} style={styles.removeStop}>
+                    <Ionicons name="close" size={18} color={colors.red[400]} />
+                  </Pressable>
+                </View>
+              ))}
+              {stops.length < 5 && (
+                <Pressable onPress={addStop} style={styles.addStopBtn}>
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary[500]} />
+                  <Text style={styles.addStopText}>Ajouter une étape</Text>
+                </Pressable>
+              )}
+            </Card>
+
+            <Card label="Rayon de recherche autour de la destination" right={`${searchRadiusKm} km`}>
+              <Text style={styles.stopsHint}>
+                Activités et hôtels dans ce rayon autour de {destination || 'la ville'}.
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
+                {[10, 25, 50, 100, 150, 200].map((r) => (
+                  <Pressable
+                    key={r}
+                    onPress={() => setSearchRadiusKm(r)}
+                    style={[styles.budgetChip, searchRadiusKm === r && styles.budgetChipActive]}
+                  >
+                    <Text style={[styles.budgetChipText, searchRadiusKm === r && { color: colors.white }]}>{r} km</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </Card>
+
+            <Pressable
+              onPress={() => setHostStay(!hostStay)}
+              style={[styles.hostCard, hostStay && styles.hostCardActive]}
+            >
+              <View style={[styles.hostIcon, hostStay && { backgroundColor: colors.primary[500] }]}>
+                <Ionicons name="home-outline" size={20} color={hostStay ? colors.white : colors.primary[500]} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.hostTitle}>Loger chez quelqu&apos;un</Text>
+                <Text style={styles.hostDesc}>Famille, amis ou communauté — l&apos;hébergement est gratuit, on enlève ce poste du budget.</Text>
+              </View>
+              <View style={[styles.toggleTrack, hostStay && { backgroundColor: colors.primary[500] }]}>
+                <View style={[styles.toggleKnob, hostStay && { alignSelf: 'flex-end' }]} />
+              </View>
+            </Pressable>
+
             {error && <Text style={styles.errorText}>{error}</Text>}
 
             <Button onPress={handleSubmit} loading={loading} fullWidth size="lg" style={{ marginTop: spacing.md }}>
@@ -191,4 +264,18 @@ const styles = StyleSheet.create({
   tripTypeLabel: { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: '600' },
 
   errorText: { color: colors.red[400], fontSize: fontSize.sm, textAlign: 'center' },
+
+  stopsHint: { fontSize: fontSize.xs, color: colors.text.muted, marginTop: 4, lineHeight: 16 },
+  stopRow: { flexDirection: 'row', gap: 8, marginTop: spacing.sm },
+  removeStop: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,82,82,0.12)', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end', marginBottom: 4 },
+  addStopBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, marginTop: 6, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary[500] + '60', borderRadius: radius.lg },
+  addStopText: { color: colors.primary[500], fontSize: fontSize.sm, fontWeight: '700' },
+
+  hostCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.bgElevated, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  hostCardActive: { borderColor: colors.primary[500], backgroundColor: colors.primary[500] + '15' },
+  hostIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary[500] + '20', alignItems: 'center', justifyContent: 'center' },
+  hostTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.text.primary },
+  hostDesc: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: 2, lineHeight: 16 },
+  toggleTrack: { width: 46, height: 26, borderRadius: 13, backgroundColor: colors.bgSubtle, padding: 2 },
+  toggleKnob: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.white },
 });
