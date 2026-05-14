@@ -7,6 +7,7 @@ import simulationRoutes from './routes/simulationRoutes';
 import tripRoutes from './routes/tripRoutes';
 import stripeRoutes from './routes/stripeRoutes';
 import destinationRoutes from './routes/destinationRoutes';
+import groupRoutes from './routes/groupRoutes';
 import { handleWebhook } from './controllers/stripeController';
 import { startPriceAlertCron } from './services/priceAlertJob';
 
@@ -42,6 +43,7 @@ app.use('/api', simulationRoutes);
 app.use('/api', tripRoutes);
 app.use('/api', stripeRoutes);
 app.use('/api', destinationRoutes);
+app.use('/api', groupRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

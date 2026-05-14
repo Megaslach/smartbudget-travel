@@ -207,6 +207,24 @@ export interface TripStop {
   nights?: number;
 }
 
+export interface TripGroupMember {
+  id: string;
+  userId: string;
+  role: string;
+  joinedAt: string;
+  user: { id: string; email: string };
+}
+
+export interface TripGroup {
+  id: string;
+  name: string;
+  emoji: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  members?: TripGroupMember[];
+}
+
 export interface Simulation {
   id: string;
   destination: string;

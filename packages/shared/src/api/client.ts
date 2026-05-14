@@ -1,7 +1,7 @@
 import {
   AuthResponse, SimulationResponse, TripResponse, Simulation, PriceCheckResponse,
   CompareResponse, CollaboratorsResponse, Comment, InviteInfo, PriceAlertConfig, PricePoint,
-  FlexibleDatesScanResponse, PremiumFilters,
+  FlexibleDatesScanResponse, PremiumFilters, TripGroup,
 } from '../types';
 
 export interface ApiClientConfig {
@@ -116,6 +116,37 @@ export class ApiClient {
       method: 'PATCH',
       body: JSON.stringify({ hostStay }),
     });
+  }
+
+  /** Refresh hotel/activity list, keeping pinned items (by name). */
+  regenerateOptions(simulationId: string, category: 'hotels' | 'activities', keepNames: string[]): Promise<{ simulation: Simulation }> {
+    return this.request(`/simulation/${simulationId}/regenerate`, {
+      method: 'POST',
+      body: JSON.stringify({ category, keepNames }),
+    });
+  }
+
+  // Trip groups
+  createGroup(data: { name: string; emoji?: string }): Promise<{ group: TripGroup }> {
+    return this.request('/groups', { method: 'POST', body: JSON.stringify(data) });
+  }
+  listGroups(): Promise<{ groups: (TripGroup & { memberCount: number; myRole: string })[] }> {
+    return this.request('/groups');
+  }
+  getGroup(id: string): Promise<{ group: TripGroup & { myRole: string } }> {
+    return this.request(`/groups/${id}`);
+  }
+  createGroupInvite(id: string): Promise<{ token: string; expiresAt: string }> {
+    return this.request(`/groups/${id}/invite`, { method: 'POST' });
+  }
+  getGroupInviteInfo(token: string): Promise<{ group: TripGroup; expiresAt: string }> {
+    return this.request(`/group-invite/${token}`);
+  }
+  acceptGroupInvite(token: string): Promise<{ groupId: string }> {
+    return this.request(`/group-invite/${token}/accept`, { method: 'POST' });
+  }
+  leaveGroup(id: string): Promise<{ success: boolean }> {
+    return this.request(`/groups/${id}`, { method: 'DELETE' });
   }
 
   getNearestAirport(lat: number, lng: number): Promise<{

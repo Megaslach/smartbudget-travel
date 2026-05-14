@@ -213,23 +213,42 @@ export default function SimulationDetail() {
               )}
 
               {/* Hotels */}
-              {budget.accommodation?.options?.length > 0 && (
-                <Section title="Hébergement" icon="bed" badge={budget.accommodation.isRealData ? 'Prix réels' : 'Prix indicatif'} badgeOk={budget.accommodation.isRealData}>
-                  {budget.accommodation.options.map((h, i) => <HotelRow key={i} hotel={h} duration={sim.duration} />)}
-                  {!!budget.accommodation.searchUrl && (
-                    <Pressable onPress={() => Linking.openURL(budget.accommodation.searchUrl)} style={styles.searchLink}>
-                      <Text style={styles.searchLinkText}>Voir tous les hôtels →</Text>
-                    </Pressable>
-                  )}
+              {!sim.hostStay && budget.accommodation?.options?.length > 0 && (
+                <Section
+                  title="Hébergement"
+                  icon="bed"
+                  badge={budget.accommodation.isRealData ? 'Prix réels' : 'Prix indicatif'}
+                  badgeOk={budget.accommodation.isRealData}
+                  onRefresh={async (kept: string[]) => {
+                    const { simulation } = await api.regenerateOptions(sim.id, 'hotels', kept);
+                    setSim((s) => s ? { ...s, ...simulation } : simulation as any);
+                  }}
+                  items={budget.accommodation.options.map((h) => h.name)}
+                >
+                  {(pinned: string[], togglePin: (n: string) => void) =>
+                    budget.accommodation.options.map((h, i) => (
+                      <HotelRow key={`${h.name}-${i}`} hotel={h} duration={sim.duration} pinned={pinned.includes(h.name)} onTogglePin={() => togglePin(h.name)} />
+                    ))
+                  }
                 </Section>
               )}
 
               {/* Activities */}
               {budget.activities?.options?.length > 0 && (
-                <Section title="Activités" icon="ticket-outline">
-                  {budget.activities.options.map((a, i) => (
-                    <ActivityCard key={i} activity={a} people={sim.people} destination={sim.destination} />
-                  ))}
+                <Section
+                  title="Activités"
+                  icon="ticket-outline"
+                  onRefresh={async (kept: string[]) => {
+                    const { simulation } = await api.regenerateOptions(sim.id, 'activities', kept);
+                    setSim((s) => s ? { ...s, ...simulation } : simulation as any);
+                  }}
+                  items={budget.activities.options.map((a) => a.name)}
+                >
+                  {(pinned: string[], togglePin: (n: string) => void) =>
+                    budget.activities.options.map((a, i) => (
+                      <ActivityCard key={`${a.name}-${i}`} activity={a} people={sim.people} destination={sim.destination} pinned={pinned.includes(a.name)} onTogglePin={() => togglePin(a.name)} />
+                    ))
+                  }
                 </Section>
               )}
 
@@ -369,7 +388,27 @@ function ConfidenceBadge({ confidence }: { confidence: 'high' | 'medium' | 'low'
   );
 }
 
-function Section({ title, icon, children, badge, badgeOk }: any) {
+function Section({ title, icon, children, badge, badgeOk, onRefresh, items }: any) {
+  const [pinned, setPinned] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const togglePin = (name: string) => {
+    setPinned((p) => p.includes(name) ? p.filter(n => n !== name) : [...p, name]);
+  };
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setRefreshing(true);
+    try { await onRefresh(pinned); }
+    catch (e: any) { Alert.alert('Erreur', e?.error || 'Impossible de rafraîchir'); }
+    finally { setRefreshing(false); }
+  };
+
+  // Use children as render-prop if it's a function, else render directly
+  const renderedChildren = typeof children === 'function'
+    ? children(pinned, togglePin)
+    : children;
+
   return (
     <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -382,8 +421,20 @@ function Section({ title, icon, children, badge, badgeOk }: any) {
             </Text>
           </View>
         )}
+        {onRefresh && (
+          <Pressable onPress={handleRefresh} disabled={refreshing} hitSlop={8} style={styles.refreshBtn}>
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.primary[500]} />
+            ) : (
+              <>
+                <Ionicons name="refresh" size={14} color={colors.primary[500]} />
+                <Text style={styles.refreshText}>{pinned.length > 0 ? `Garder ${pinned.length} • Renouveler` : 'Renouveler'}</Text>
+              </>
+            )}
+          </Pressable>
+        )}
       </View>
-      {children}
+      {renderedChildren}
     </View>
   );
 }
@@ -414,7 +465,7 @@ function FlightRow({ flight, people }: { flight: FlightOption; people: number })
   );
 }
 
-function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number }) {
+function HotelRow({ hotel, duration, pinned, onTogglePin }: { hotel: HotelOption; duration: number; pinned?: boolean; onTogglePin?: () => void }) {
   const [resolvedImage, setResolvedImage] = useState<string | null>(hotel.imageUrl ?? null);
   const [errored, setErrored] = useState(false);
 
@@ -430,7 +481,7 @@ function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number })
 
   return (
     <Pressable onPress={() => hotel.bookingUrl && Linking.openURL(hotel.bookingUrl)}>
-      <Card noPadding style={{ flexDirection: 'row', overflow: 'hidden', alignItems: 'stretch' }}>
+      <Card noPadding style={[{ flexDirection: 'row', overflow: 'hidden', alignItems: 'stretch' }, pinned && { borderColor: colors.primary[500], borderWidth: 2 }]}>
         <View style={styles.hotelImageBox}>
           {resolvedImage && !errored ? (
             <Image
@@ -441,6 +492,15 @@ function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number })
             />
           ) : (
             <Ionicons name="bed" size={28} color={colors.indigo[500]} />
+          )}
+          {onTogglePin && (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onTogglePin(); }}
+              hitSlop={8}
+              style={[styles.pinBtn, { top: 6, right: 6 }]}
+            >
+              <Ionicons name={pinned ? 'heart' : 'heart-outline'} size={16} color={pinned ? colors.primary[500] : colors.white} />
+            </Pressable>
           )}
         </View>
         <View style={styles.hotelBody}>
@@ -464,7 +524,7 @@ function HotelRow({ hotel, duration }: { hotel: HotelOption; duration: number })
   );
 }
 
-function ActivityCard({ activity, people, destination }: { activity: ActivityOption; people: number; destination: string }) {
+function ActivityCard({ activity, people, destination, pinned, onTogglePin }: { activity: ActivityOption; people: number; destination: string; pinned?: boolean; onTogglePin?: () => void }) {
   const fallbackUrl = 'https://images.pexels.com/photos/2245436/pexels-photo-2245436.jpeg?auto=compress&w=940';
   const [resolvedImage, setResolvedImage] = useState<string>(activity.imageUrl || fallbackUrl);
   const [errored, setErrored] = useState(false);
@@ -490,7 +550,7 @@ function ActivityCard({ activity, people, destination }: { activity: ActivityOpt
 
   return (
     <Pressable onPress={() => activity.bookingUrl && Linking.openURL(activity.bookingUrl)}>
-      <Card noPadding style={{ overflow: 'hidden' }}>
+      <Card noPadding style={[{ overflow: 'hidden' }, pinned && { borderColor: colors.primary[500], borderWidth: 2 }]}>
         <View style={styles.activityImageBox}>
           <Image
             source={{ uri: resolvedImage }}
@@ -501,6 +561,15 @@ function ActivityCard({ activity, people, destination }: { activity: ActivityOpt
           <View style={styles.activityPriceBadge}>
             <Text style={styles.activityPriceText}>{formatCurrency(activity.price)}/pers</Text>
           </View>
+          {onTogglePin && (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onTogglePin(); }}
+              hitSlop={8}
+              style={styles.pinBtn}
+            >
+              <Ionicons name={pinned ? 'heart' : 'heart-outline'} size={18} color={pinned ? colors.primary[500] : colors.white} />
+            </Pressable>
+          )}
         </View>
         <View style={{ padding: spacing.md }}>
           <Text style={styles.rowTitle} numberOfLines={1}>{activity.name}</Text>
@@ -644,6 +713,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   activityPriceText: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  pinBtn: {
+    position: 'absolute', top: 8, right: 8,
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  refreshBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginLeft: 'auto',
+    paddingHorizontal: spacing.sm, paddingVertical: 4,
+    backgroundColor: colors.primary[500] + '15',
+    borderRadius: radius.full,
+  },
+  refreshText: { fontSize: 11, fontWeight: '700', color: colors.primary[500] },
 
   searchLink: { paddingVertical: 8, alignItems: 'center' },
   searchLinkText: { color: colors.primary[700], fontSize: fontSize.sm, fontWeight: '600' },

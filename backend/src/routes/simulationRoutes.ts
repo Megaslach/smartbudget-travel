@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { simulate, getUserSimulations, getSimulationDetail, priceCheck, getSharedSimulation, deleteSimulation, updateHostStay } from '../controllers/simulationController';
+import { regenerate } from '../controllers/regenerateController';
 import { compareDestinations } from '../controllers/compareController';
 import {
   createInvite, getInviteInfo, acceptInvite,
@@ -18,6 +19,7 @@ router.get('/simulation/:id', authenticate, getSimulationDetail as any);
 router.delete('/simulation/:id', authenticate, deleteSimulation as any);
 router.get('/simulation/:id/price-check', authenticate, priceCheck as any);
 router.patch('/simulation/:id/host-stay', authenticate, updateHostStay as any);
+router.post('/simulation/:id/regenerate', authenticate, regenerate as any);
 
 // Feature 8: Comparator
 router.post('/compare', authenticate, compareDestinations as any);

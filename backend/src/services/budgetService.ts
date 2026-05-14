@@ -9,6 +9,7 @@ import { searchKiwiFlights, KiwiFlightOffer } from './kiwiFlightService';
 import { searchRealHotels, RealHotelOffer } from './hotelSearchService';
 import { withAffiliate } from '../config/affiliates';
 import { generateAddons, AddonOption } from './addonsService';
+import { resolveActivityImages } from './imageResolverService';
 
 export interface FlightOption {
   airline: string;
@@ -152,10 +153,11 @@ function buildActivityUrl(activityName: string, destination: string): string {
   return withAffiliate(`https://www.getyourguide.fr/s/?q=${query}`);
 }
 
+// Deterministic LoremFlickr fallback (source.unsplash.com was deprecated mid-2024).
+// Real Pexels resolution happens server-side via resolveActivityImages after generation.
 function buildActivityImageUrl(activityName: string, destination: string): string {
-  // Free Unsplash Source: keyword-based, deterministic per activity
-  const keywords = encodeURIComponent(`${activityName},${destination},travel`);
-  return `https://source.unsplash.com/400x300/?${keywords}`;
+  const keywords = encodeURIComponent(`${activityName},${destination},travel`.replace(/\s+/g, ',').replace(/[^\w,]/g, ''));
+  return `https://loremflickr.com/600/400/${keywords}`;
 }
 
 function buildCarRentalImageUrl(category: string): string {
@@ -168,7 +170,7 @@ function buildCarRentalImageUrl(category: string): string {
   else if (k.includes('berline') || k.includes('sedan')) keywords = 'sedan,car';
   else if (k.includes('mini')) keywords = 'mini,city,car';
   else if (k.includes('van') || k.includes('monospace')) keywords = 'minivan,car';
-  return `https://source.unsplash.com/400x300/?${encodeURIComponent(keywords)}`;
+  return `https://loremflickr.com/600/400/${encodeURIComponent(keywords)}`;
 }
 
 function buildCarRentalBookingUrl(provider: string, destination: string, startDate: string, endDate: string): string {
@@ -389,13 +391,23 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
 
   const addons = generateAddons({ destination, duration, people });
 
+  // Pre-resolve activity + hotel images via Pexels (server-side) so the
+  // mobile/web don't have to do any client-side image fetch. Falls back
+  // to LoremFlickr deterministic URLs if PEXELS_KEY is not set.
+  let resolvedActivities: ActivityOption[] = activities.options;
+  let resolvedHotels: HotelOption[] = accommodation.options;
+  try {
+    resolvedActivities = await resolveActivityImages(activities.options, destination);
+    resolvedHotels = await resolveActivityImages(accommodation.options, destination);
+  } catch { /* keep originals */ }
+
   return {
     flights,
-    accommodation,
+    accommodation: { ...accommodation, options: resolvedHotels },
     food: aiData.food,
     transport: aiData.transport,
     localTransport: aiData.localTransport,
-    activities,
+    activities: { ...activities, options: resolvedActivities },
     addons,
     total,
     currency: 'EUR',

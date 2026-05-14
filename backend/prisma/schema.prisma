@@ -22,6 +22,43 @@ model User {
   collaborations SimulationCollaborator[]
   comments       SimulationComment[]
   invitesCreated SimulationInvite[]       @relation("InviteCreator")
+  ownedGroups    TripGroup[]              @relation("GroupOwner")
+  groupMembers   TripGroupMember[]
+}
+
+model TripGroup {
+  id          String            @id @default(uuid())
+  name        String
+  emoji       String            @default("🌍")
+  ownerId     String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  owner       User              @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     TripGroupMember[]
+  invites     TripGroupInvite[]
+}
+
+model TripGroupMember {
+  id        String    @id @default(uuid())
+  groupId   String
+  userId    String
+  role      String    @default("member")
+  joinedAt  DateTime  @default(now())
+  group     TripGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model TripGroupInvite {
+  id         String    @id @default(uuid())
+  groupId    String
+  token      String    @unique
+  createdBy  String
+  expiresAt  DateTime
+  usedCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  group      TripGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model Simulation {
