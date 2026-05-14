@@ -21,6 +21,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){var s=document.createElement("script");s.async=1;s.src="https://tp-em.com/NTE5Njcw.js?t=519670";document.head.appendChild(s);})();`,
           }}
         />
+        {/* GetYourGuide analytics — tracks impressions + click attribution */}
+        <Script
+          id="gyg-analytics"
+          strategy="afterInteractive"
+          src="https://widget.getyourguide.com/dist/pa.umd.production.min.js"
+          data-gyg-partner-id="4FUSNVA"
+        />
       </head>
       <body>
         <AuthProvider>
