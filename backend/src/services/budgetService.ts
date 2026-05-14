@@ -10,6 +10,7 @@ import { searchRealHotels, RealHotelOffer } from './hotelSearchService';
 import { withAffiliate } from '../config/affiliates';
 import { generateAddons, AddonOption } from './addonsService';
 import { resolveActivityImages } from './imageResolverService';
+import { buildActivityBookingUrl, buildHotelBookingUrl } from './bookingUrlService';
 
 export interface FlightOption {
   airline: string;
@@ -147,10 +148,7 @@ export interface SimulationInput {
 }
 
 function buildActivityUrl(activityName: string, destination: string): string {
-  // Deep search per activity: GetYourGuide query combining name + destination
-  // This lands on a pre-filled search page with the specific activity
-  const query = encodeURIComponent(`${activityName} ${destination}`);
-  return withAffiliate(`https://www.getyourguide.fr/s/?q=${query}`);
+  return withAffiliate(buildActivityBookingUrl(activityName, destination));
 }
 
 // Deterministic LoremFlickr fallback (source.unsplash.com was deprecated mid-2024).

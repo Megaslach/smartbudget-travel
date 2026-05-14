@@ -8,6 +8,7 @@ import prisma from '../config/prisma';
 import { openai } from '../config/openai';
 import { resolveActivityImages } from '../services/imageResolverService';
 import { withAffiliate } from '../config/affiliates';
+import { buildActivityBookingUrl, buildHotelBookingUrl } from '../services/bookingUrlService';
 
 type Category = 'activities' | 'hotels';
 
@@ -59,7 +60,7 @@ Sois créatif, varie les types (culture, gastro, nature, etc.). Pas de doublons.
         name: a.name,
         price: Number(a.price) || 25,
         duration: a.duration || '2-3h',
-        bookingUrl: withAffiliate(`https://www.getyourguide.com/s/?q=${encodeURIComponent(a.name + ' ' + sim.destination)}`),
+        bookingUrl: withAffiliate(buildActivityBookingUrl(a.name, sim.destination)),
       }));
 
       const withImages = await resolveActivityImages(newOpts, sim.destination);
@@ -88,7 +89,7 @@ Varie les gammes et les quartiers. Pas de doublons.`;
         type: h.type || 'Hôtel',
         pricePerNight: Number(h.pricePerNight) || 80,
         rating: Number(h.rating) || 4,
-        bookingUrl: withAffiliate(`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.name + ' ' + sim.destination)}`),
+        bookingUrl: withAffiliate(buildHotelBookingUrl(h.name, sim.destination)),
       }));
 
       const withImages = await resolveActivityImages(newOpts, sim.destination);

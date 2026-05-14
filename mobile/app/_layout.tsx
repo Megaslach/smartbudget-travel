@@ -49,6 +49,10 @@ function RootNav() {
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="search" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="groups/index" />
+      <Stack.Screen name="groups/create" />
+      <Stack.Screen name="groups/[id]" />
+      <Stack.Screen name="group-invite/[token]" />
       <Stack.Screen name="simulation/[id]" options={{ ...stackHeaderOptions, title: 'Détails' }} />
       <Stack.Screen name="subscription" />
     </Stack>

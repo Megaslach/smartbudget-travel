@@ -75,7 +75,7 @@ export default function ProfileScreen() {
 
         <View style={styles.menu}>
           <MenuRow icon="airplane-outline"          label="Mes voyages"   onPress={() => router.push('/(tabs)/favoris' as any)} />
-          <MenuRow icon="people-outline"             label="Mes groupes"   onPress={() => Alert.alert('Bientôt', 'Les groupes arrivent bientôt')} />
+          <MenuRow icon="people-outline"             label="Mes groupes"   onPress={() => router.push('/groups' as any)} />
           <MenuRow icon="heart-outline"              label="Mes favoris"   onPress={() => router.push('/(tabs)/favoris' as any)} />
           <MenuRow icon="images-outline"             label="Mes photos"    onPress={() => Alert.alert('Bientôt', 'Album souvenirs bientôt')} />
           <MenuRow icon="settings-outline"           label="Paramètres"    onPress={() => router.push('/settings' as any)} />
