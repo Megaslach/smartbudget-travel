@@ -11,6 +11,7 @@ import { withAffiliate } from '../config/affiliates';
 import { generateAddons, AddonOption } from './addonsService';
 import { resolveActivityImages } from './imageResolverService';
 import { buildActivityBookingUrl, buildHotelBookingUrl } from './bookingUrlService';
+import { getRealActivities } from './realActivitiesService';
 
 export interface FlightOption {
   airline: string;
@@ -511,17 +512,44 @@ Règles localTransport: 3 voitures (catégories différentes), 4-6 transports pu
       })),
     } : { avgPerNight: 80, total: 80 * duration, source: 'Estimation IA', note: '', searchUrl: urls.booking, isRealData: false, options: [] };
 
-    const activities: ActivitiesEstimate = {
-      total: parsed.activities?.total || 25 * duration * people,
-      perDayPerPerson: parsed.activities?.perDayPerPerson || 25,
-      searchUrl: urls.getyourguide,
-      options: (parsed.activities?.options || []).map((a: any) => ({
+    // Try to load REAL activities from GetYourGuide's partner widget first
+    // (real names, deep-links with our partner_id, real images from their CDN).
+    // Falls back to AI-generated entries if the widget returns nothing.
+    let realActivities = await getRealActivities(destination, 8).catch(() => []);
+    let activityOptions: ActivityOption[];
+    let activitiesTotal: number;
+    let perDayPerPerson: number;
+
+    if (realActivities.length > 0) {
+      activityOptions = realActivities.map((a) => ({
+        name: a.name,
+        price: a.price,
+        duration: a.duration,
+        bookingUrl: a.bookingUrl,
+        imageUrl: a.imageUrl,
+      }));
+      // Estimate per-person daily budget from the median activity price.
+      const sorted = [...realActivities].map((a) => a.price).sort((x, y) => x - y);
+      const median = sorted[Math.floor(sorted.length / 2)] || 30;
+      perDayPerPerson = Math.max(15, Math.round(median * 0.7));
+      activitiesTotal = perDayPerPerson * duration * people;
+    } else {
+      activityOptions = (parsed.activities?.options || []).map((a: any) => ({
         name: a.name,
         price: a.price,
         duration: a.duration,
         bookingUrl: buildActivityUrl(a.name, destination),
         imageUrl: buildActivityImageUrl(a.name, destination),
-      })),
+      }));
+      activitiesTotal = parsed.activities?.total || 25 * duration * people;
+      perDayPerPerson = parsed.activities?.perDayPerPerson || 25;
+    }
+
+    const activities: ActivitiesEstimate = {
+      total: activitiesTotal,
+      perDayPerPerson,
+      searchUrl: urls.getyourguide,
+      options: activityOptions,
     };
 
     const transportTotal = parsed.transport || 15 * duration * people;

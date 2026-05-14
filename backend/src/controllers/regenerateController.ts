@@ -9,6 +9,7 @@ import { openai } from '../config/openai';
 import { resolveActivityImages } from '../services/imageResolverService';
 import { withAffiliate } from '../config/affiliates';
 import { buildActivityBookingUrl, buildHotelBookingUrl } from '../services/bookingUrlService';
+import { getRealActivities } from '../services/realActivitiesService';
 
 type Category = 'activities' | 'hotels';
 
@@ -41,30 +42,45 @@ export const regenerate = async (req: AuthRequest, res: Response): Promise<void>
 
     if (category === 'activities') {
       const kept = (budget.activities?.options || []).filter((a: any) => keepNames.includes(a.name));
-      const newCount = Math.max(3, 8 - kept.length);
 
-      const prompt = `Tu es expert voyage. Pour ${sim.destination} (${sim.duration} jours, ${sim.people} pers), génère ${newCount} NOUVELLES activités touristiques DIFFÉRENTES de celles-ci : ${kept.map((a: any) => a.name).join(', ') || 'aucune'}.
-Réponds en JSON strict :
-{ "activities": [{ "name": "string", "price": number_euros, "duration": "string" }] }
-Sois créatif, varie les types (culture, gastro, nature, etc.). Pas de doublons.`;
+      // Get a fresh batch of real activities from GetYourGuide
+      const real = await getRealActivities(sim.destination, 12).catch(() => []);
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 1.1, // diversity
-      });
+      // Filter out kept names + take enough for total ~8 displayed
+      const newOpts = real
+        .filter((a) => !keepNames.includes(a.name))
+        .slice(0, Math.max(3, 8 - kept.length))
+        .map((a) => ({
+          name: a.name,
+          price: a.price,
+          duration: a.duration,
+          bookingUrl: a.bookingUrl,
+          imageUrl: a.imageUrl,
+        }));
 
-      const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      const newOpts = (parsed.activities || []).map((a: any) => ({
-        name: a.name,
-        price: Number(a.price) || 25,
-        duration: a.duration || '2-3h',
-        bookingUrl: withAffiliate(buildActivityBookingUrl(a.name, sim.destination)),
-      }));
-
-      const withImages = await resolveActivityImages(newOpts, sim.destination);
-      const merged = [...kept, ...withImages];
+      // If GetYourGuide returned nothing, fall back to AI
+      let merged;
+      if (newOpts.length === 0) {
+        const prompt = `Pour ${sim.destination} (${sim.duration} jours, ${sim.people} pers), génère 6 activités touristiques DIFFÉRENTES de : ${kept.map((a: any) => a.name).join(', ') || 'aucune'}.
+JSON strict : { "activities": [{ "name": "string", "price": number, "duration": "string" }] }`;
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 1.1,
+        });
+        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        const aiOpts = (parsed.activities || []).map((a: any) => ({
+          name: a.name,
+          price: Number(a.price) || 25,
+          duration: a.duration || '2-3h',
+          bookingUrl: withAffiliate(buildActivityBookingUrl(a.name, sim.destination)),
+        }));
+        const withImages = await resolveActivityImages(aiOpts, sim.destination);
+        merged = [...kept, ...withImages];
+      } else {
+        merged = [...kept, ...newOpts];
+      }
 
       budget.activities = { ...budget.activities, options: merged };
     } else if (category === 'hotels') {
