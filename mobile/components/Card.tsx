@@ -10,7 +10,7 @@ interface Props {
 
 export default function Card({ children, style, noPadding }: Props) {
   return (
-    <View style={[styles.card, noPadding ? null : { padding: spacing.lg + 4 }, style]}>
+    <View style={[styles.card, noPadding ? null : { padding: spacing.lg }, style]}>
       {children}
     </View>
   );
@@ -18,14 +18,9 @@ export default function Card({ children, style, noPadding }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
-    borderRadius: radius['2xl'],
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.gray[100],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: colors.border,
   },
 });

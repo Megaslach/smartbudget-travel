@@ -43,11 +43,14 @@ function RootNav() {
   };
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="search" />
+      <Stack.Screen name="settings" />
       <Stack.Screen name="simulation/[id]" options={{ ...stackHeaderOptions, title: 'Détails' }} />
-      <Stack.Screen name="subscription" options={{ ...stackHeaderOptions, title: 'Mon abonnement' }} />
+      <Stack.Screen name="subscription" />
     </Stack>
   );
 }

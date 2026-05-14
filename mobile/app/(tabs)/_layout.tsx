@@ -11,11 +11,12 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary[700],
-        tabBarInactiveTintColor: colors.gray[400],
+        tabBarActiveTintColor: colors.primary[500],
+        tabBarInactiveTintColor: colors.text.muted,
         tabBarStyle: {
-          backgroundColor: colors.white,
-          borderTopColor: colors.gray[100],
+          backgroundColor: colors.bgElevated,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
           height: 60 + bottom,
           paddingBottom: bottom,
           paddingTop: 8,
@@ -27,29 +28,22 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          title: 'Explorer',
+          tabBarIcon: ({ color, size }) => <Ionicons name="compass-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="simulate"
+        name="inspiration"
         options={{
-          title: 'Simuler',
-          tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" size={size} color={color} />,
+          title: 'Inspiration',
+          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="compare"
+        name="favoris"
         options={{
-          title: 'Comparer',
-          tabBarIcon: ({ color, size }) => <Ionicons name="git-compare-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="trips"
-        options={{
-          title: 'Mes voyages',
-          tabBarIcon: ({ color, size }) => <Ionicons name="airplane-outline" size={size} color={color} />,
+          title: 'Favoris',
+          tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -59,6 +53,11 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" size={size} color={color} />,
         }}
       />
+
+      {/* Hide old tabs that we're removing */}
+      <Tabs.Screen name="simulate" options={{ href: null }} />
+      <Tabs.Screen name="compare" options={{ href: null }} />
+      <Tabs.Screen name="trips" options={{ href: null }} />
     </Tabs>
   );
 }

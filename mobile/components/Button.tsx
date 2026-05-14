@@ -1,8 +1,8 @@
 import { ReactNode } from 'react';
 import { Pressable, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors, radius, spacing, fontSize } from '../lib/theme';
+import { colors, radius, spacing, fontSize, shadow } from '../lib/theme';
 
-type Variant = 'primary' | 'accent' | 'ghost' | 'outline';
+type Variant = 'primary' | 'accent' | 'ghost' | 'outline' | 'dark';
 type Size = 'sm' | 'md' | 'lg';
 
 interface Props {
@@ -56,7 +56,7 @@ export default function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.xl,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -82,19 +82,23 @@ const sizeTextStyles: Record<Size, TextStyle> = {
 
 const variantStyles: Record<Variant, { container: ViewStyle; text: TextStyle }> = {
   primary: {
-    container: { backgroundColor: colors.primary[700] },
+    container: { backgroundColor: colors.primary[500], ...shadow.glow },
     text: { color: colors.white },
   },
   accent: {
-    container: { backgroundColor: colors.accent[500] },
+    container: { backgroundColor: colors.primary[500] },
     text: { color: colors.white },
   },
   ghost: {
     container: { backgroundColor: 'transparent' },
-    text: { color: colors.gray[700] },
+    text: { color: colors.text.secondary },
   },
   outline: {
-    container: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.gray[200] },
-    text: { color: colors.gray[800] },
+    container: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.borderStrong },
+    text: { color: colors.text.primary },
+  },
+  dark: {
+    container: { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.border },
+    text: { color: colors.text.primary },
   },
 };

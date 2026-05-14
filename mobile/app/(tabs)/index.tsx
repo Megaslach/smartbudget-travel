@@ -1,119 +1,174 @@
-import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ScrollView, View, Text, StyleSheet, Pressable, ImageBackground, TextInput,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
-import Card from '../../components/Card';
-import Button from '../../components/Button';
+import { getDestinationImage } from '../../lib/destinationImages';
 import { colors, fontSize, radius, spacing } from '../../lib/theme';
 
-export default function HomeScreen() {
+const IDEAS = [
+  { name: 'Barcelone',  country: 'Espagne'  },
+  { name: 'Lisbonne',   country: 'Portugal' },
+];
+
+const POPULAR = [
+  { name: 'Bali',     country: 'Indonésie'  },
+  { name: 'New York', country: 'États-Unis' },
+  { name: 'Tokyo',    country: 'Japon'      },
+  { name: 'Marrakech',country: 'Maroc'      },
+];
+
+export default function ExplorerScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [query, setQuery] = useState('');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing['2xl'] }}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Bonjour</Text>
-            <Text style={styles.email}>{user?.email}</Text>
-          </View>
-          {user?.isPremium && (
-            <View style={styles.premiumBadge}>
-              <Ionicons name="star" size={12} color={colors.amber[500]} />
-              <Text style={styles.premiumText}>Premium</Text>
+          <Text style={styles.greeting}>Bonjour {user?.email?.split('@')[0] || 'voyageur'} ! 👋</Text>
+          <Pressable hitSlop={10} onPress={() => router.push('/(tabs)/profile')}>
+            <View style={styles.bellWrap}>
+              <Ionicons name="notifications-outline" size={22} color={colors.text.primary} />
             </View>
-          )}
+          </Pressable>
         </View>
 
-        <Card style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Voyagez malin, pas cher.</Text>
-          <Text style={styles.heroDesc}>
-            Simulez votre budget en un clic, découvrez un itinéraire sur-mesure.
-          </Text>
-          <Button onPress={() => router.push('/(tabs)/simulate')} fullWidth size="lg" style={{ marginTop: spacing.lg }}>
-            Estimer mon budget
-          </Button>
-        </Card>
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          <Text style={styles.title}>Où veux-tu partir ?</Text>
 
-        <Text style={styles.sectionTitle}>Pourquoi SmartBudget ?</Text>
+          <Pressable
+            onPress={() => router.push('/search' as any)}
+            style={styles.searchBar}
+          >
+            <Ionicons name="search-outline" size={20} color={colors.text.muted} />
+            <Text style={styles.searchPlaceholder}>Rechercher une destination</Text>
+          </Pressable>
+        </View>
 
-        <FeatureRow
-          icon="trending-down"
-          color={colors.emerald[500]}
-          title="Budget transparent"
-          desc="Estimation basée sur des données réelles, sans surprise."
-        />
-        <FeatureRow
-          icon="sparkles"
-          color={colors.accent[500]}
-          title="Itinéraire personnalisé"
-          desc="Jour par jour selon ton style, ton budget et tes envies."
-        />
-        <FeatureRow
-          icon="people"
-          color={colors.primary[600]}
-          title="Voyage à plusieurs"
-          desc="Invite tes amis, votez ensemble, tracker des dépenses inclus."
-        />
+        <Section title="Idées pour toi" onSeeAll={() => router.push('/search' as any)}>
+          <View style={styles.ideasGrid}>
+            {IDEAS.map((d) => (
+              <IdeaCard key={d.name} destination={d} onPress={() => router.push(`/search?destination=${d.name}` as any)} />
+            ))}
+          </View>
+        </Section>
 
-        <Pressable onPress={() => router.push('/(tabs)/trips')} style={{ marginTop: spacing.xl }}>
-          <Text style={styles.linkText}>Voir mes voyages enregistrés →</Text>
-        </Pressable>
+        <Section title="Destinations populaires" onSeeAll={() => router.push('/search' as any)}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularList}>
+            {POPULAR.map((d) => (
+              <PopularCard key={d.name} destination={d} onPress={() => router.push(`/search?destination=${d.name}` as any)} />
+            ))}
+          </ScrollView>
+        </Section>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function FeatureRow({ icon, color, title, desc }: any) {
+function Section({ title, onSeeAll, children }: any) {
   return (
-    <Card style={styles.featureRow}>
-      <View style={[styles.featureIcon, { backgroundColor: color + '20' }]}>
-        <Ionicons name={icon} size={20} color={color} />
+    <View style={{ marginTop: spacing.xl }}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {onSeeAll && (
+          <Pressable onPress={onSeeAll} hitSlop={8}>
+            <Text style={styles.sectionLink}>Voir tout</Text>
+          </Pressable>
+        )}
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDesc}>{desc}</Text>
-      </View>
-    </Card>
+      {children}
+    </View>
+  );
+}
+
+function IdeaCard({ destination, onPress }: any) {
+  const [image, setImage] = useState<string | null>(null);
+  useEffect(() => { getDestinationImage(destination.name).then(setImage); }, [destination.name]);
+  return (
+    <Pressable onPress={onPress} style={styles.ideaCard}>
+      <ImageBackground source={image ? { uri: image } : undefined} style={styles.ideaImage} imageStyle={{ borderRadius: radius.xl }}>
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.7)']}
+          locations={[0.4, 1]}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: radius.xl }]}
+        />
+        <View style={styles.ideaTextWrap}>
+          <Text style={styles.ideaName}>{destination.name}</Text>
+          <Text style={styles.ideaCountry}>{destination.country}</Text>
+        </View>
+      </ImageBackground>
+    </Pressable>
+  );
+}
+
+function PopularCard({ destination, onPress }: any) {
+  const [image, setImage] = useState<string | null>(null);
+  useEffect(() => { getDestinationImage(destination.name).then(setImage); }, [destination.name]);
+  return (
+    <Pressable onPress={onPress} style={styles.popularCard}>
+      <ImageBackground source={image ? { uri: image } : undefined} style={styles.popularImage} imageStyle={{ borderRadius: radius.xl }}>
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.75)']}
+          locations={[0.3, 1]}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: radius.xl }]}
+        />
+        <View style={styles.popularTextWrap}>
+          <Text style={styles.popularName}>{destination.name}</Text>
+          <Text style={styles.popularCountry}>{destination.country}</Text>
+        </View>
+      </ImageBackground>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.sand[50] },
-  scroll: { padding: spacing.lg, gap: spacing.md },
+  safe: { flex: 1, backgroundColor: colors.bg },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
   },
-  greeting: { fontSize: fontSize.sm, color: colors.gray[500], fontWeight: '600' },
-  email: { fontSize: fontSize.lg, fontWeight: '700', color: colors.gray[900] },
-  premiumBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.amber[100],
-    paddingHorizontal: spacing.md, paddingVertical: 6,
-    borderRadius: radius.full,
-  },
-  premiumText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.amber[500] },
-  heroCard: { backgroundColor: colors.primary[700], borderColor: 'transparent' },
-  heroTitle: { fontSize: fontSize['3xl'], fontWeight: '800', color: colors.white, marginBottom: 6 },
-  heroDesc: { fontSize: fontSize.sm, color: colors.primary[100], lineHeight: 20 },
-  sectionTitle: {
-    fontSize: fontSize.base, fontWeight: '700', color: colors.gray[700],
-    marginTop: spacing.lg, marginBottom: 4,
-  },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  featureIcon: {
-    width: 40, height: 40, borderRadius: radius.lg,
+  greeting: { fontSize: fontSize.base, color: colors.text.secondary, fontWeight: '600' },
+  bellWrap: {
+    width: 40, height: 40, borderRadius: radius.full,
+    backgroundColor: colors.bgElevated,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.border,
   },
-  featureTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.gray[900], marginBottom: 2 },
-  featureDesc: { fontSize: fontSize.sm, color: colors.gray[500], lineHeight: 18 },
-  linkText: {
-    fontSize: fontSize.base, fontWeight: '600', color: colors.primary[700],
-    textAlign: 'center',
+  title: { fontSize: 32, fontWeight: '800', color: colors.text.primary, marginTop: spacing.sm, marginBottom: spacing.lg },
+
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.full,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.md + 2,
   },
+  searchPlaceholder: { color: colors.text.muted, fontSize: fontSize.base },
+
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: spacing.lg, marginBottom: spacing.md,
+  },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text.primary },
+  sectionLink: { fontSize: fontSize.sm, color: colors.primary[500], fontWeight: '600' },
+
+  ideasGrid: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg },
+  ideaCard: { flex: 1 },
+  ideaImage: { height: 160, justifyContent: 'flex-end', borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.bgElevated },
+  ideaTextWrap: { padding: spacing.md },
+  ideaName: { color: colors.white, fontSize: fontSize.lg, fontWeight: '800' },
+  ideaCountry: { color: 'rgba(255,255,255,0.8)', fontSize: fontSize.xs, marginTop: 2 },
+
+  popularList: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingRight: spacing.xl },
+  popularCard: { width: 140 },
+  popularImage: { height: 180, justifyContent: 'flex-end', borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.bgElevated },
+  popularTextWrap: { padding: spacing.md },
+  popularName: { color: colors.white, fontSize: fontSize.base, fontWeight: '800' },
+  popularCountry: { color: 'rgba(255,255,255,0.8)', fontSize: fontSize.xs, marginTop: 2 },
 });

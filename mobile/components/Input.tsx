@@ -8,10 +8,11 @@ interface Props extends TextInputProps {
   error?: string;
   required?: boolean;
   containerStyle?: ViewStyle;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
 }
 
 export default function Input({
-  label, error, required, secureTextEntry, containerStyle, ...props
+  label, error, required, secureTextEntry, containerStyle, leftIcon, ...props
 }: Props) {
   const [visible, setVisible] = useState(false);
   const isPassword = !!secureTextEntry;
@@ -26,9 +27,12 @@ export default function Input({
         </Text>
       )}
       <View style={[styles.inputBox, error ? styles.inputError : null]}>
+        {leftIcon && (
+          <Ionicons name={leftIcon} size={18} color={colors.text.muted} style={{ marginRight: 8 }} />
+        )}
         <TextInput
           style={styles.input}
-          placeholderTextColor={colors.gray[400]}
+          placeholderTextColor={colors.text.muted}
           secureTextEntry={effectiveSecure}
           {...props}
         />
@@ -41,7 +45,7 @@ export default function Input({
             <Ionicons
               name={visible ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color={colors.gray[500]}
+              color={colors.text.muted}
             />
           </Pressable>
         )}
@@ -56,22 +60,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.sm,
     fontWeight: '600',
-    color: colors.gray[700],
+    color: colors.text.secondary,
   },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: radius.xl,
+    backgroundColor: colors.bgElevated,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.border,
     paddingHorizontal: spacing.lg,
   },
   input: {
     flex: 1,
     paddingVertical: spacing.md + 2,
     fontSize: fontSize.base,
-    color: colors.gray[900],
+    color: colors.text.primary,
   },
   inputError: { borderColor: colors.red[400] },
   eyeButton: { padding: spacing.xs },
