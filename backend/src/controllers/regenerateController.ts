@@ -43,8 +43,16 @@ export const regenerate = async (req: AuthRequest, res: Response): Promise<void>
     if (category === 'activities') {
       const kept = (budget.activities?.options || []).filter((a: any) => keepNames.includes(a.name));
 
-      // Get a fresh batch of real activities from GetYourGuide
-      const real = await getRealActivities(sim.destination, 12).catch(() => []);
+      // Get a fresh batch of real activities from GetYourGuide.
+      // Apply trip context (dates + people) so we only get activities
+      // actually available during the user's stay.
+      const real = await getRealActivities({
+        destination: sim.destination,
+        limit: 12,
+        startDate: sim.startDate || undefined,
+        endDate: sim.endDate || undefined,
+        participants: sim.people,
+      }).catch(() => []);
 
       // Filter out kept names + take enough for total ~8 displayed
       const newOpts = real

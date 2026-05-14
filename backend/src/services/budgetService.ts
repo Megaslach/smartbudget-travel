@@ -514,8 +514,19 @@ Règles localTransport: 3 voitures (catégories différentes), 4-6 transports pu
 
     // Try to load REAL activities from GetYourGuide's partner widget first
     // (real names, deep-links with our partner_id, real images from their CDN).
-    // Falls back to AI-generated entries if the widget returns nothing.
-    let realActivities = await getRealActivities(destination, 8).catch(() => []);
+    // Filtered by trip dates + premium filters so the proposals match the
+    // user's actual context. Falls back to AI if widget returns nothing.
+    let realActivities = await getRealActivities({
+      destination,
+      limit: 8,
+      startDate,
+      endDate,
+      participants: people,
+      tripStyle: pf?.tripStyle,
+      interests: pf?.interests,
+      hasChildren: pf?.hasChildren,
+      hasAccessibilityNeeds: pf?.hasAccessibilityNeeds,
+    }).catch(() => []);
     let activityOptions: ActivityOption[];
     let activitiesTotal: number;
     let perDayPerPerson: number;
