@@ -16,6 +16,7 @@
     "start": "npm run start --workspace=@smartbudget/api",
     "dev:web": "npm run dev --workspace=@smartbudget/web",
     "dev:api": "npm run dev --workspace=@smartbudget/api",
-    "dev:mobile": "npm run start --workspace=@smartbudget/mobile"
+    "dev:mobile": "npm run start --workspace=@smartbudget/mobile",
+    "dev:mobile:tunnel": "npm run start:tunnel --workspace=@smartbudget/mobile"
   }
 }

@@ -27,6 +27,8 @@ app.use(
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
+      // Allow any localhost port (Expo web, dev servers)
+      if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
       if (/^https:\/\/[a-z0-9-]+--smartbudget-travel\.netlify\.app$/.test(origin)) return cb(null, true);
       if (/^https:\/\/.*\.railway\.app$/.test(origin)) return cb(null, true);
       if (/^https:\/\/.*\.up\.railway\.app$/.test(origin)) return cb(null, true);
@@ -52,7 +54,7 @@ app.get('/api/health', (_req, res) => {
 
 // Serve frontend static files in production
 const frontendPath = path.join(__dirname, '..', 'public');
-app.use(express.static(frontendPath));
+app.use(express.static(frontendPath, { extensions: ['html'] }));
 app.get('*', (_req, res) => {
   const indexPath = path.join(frontendPath, 'index.html');
   res.sendFile(indexPath);
