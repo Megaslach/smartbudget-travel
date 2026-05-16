@@ -77,7 +77,7 @@ export default function ProfileScreen() {
           <MenuRow icon="airplane-outline"          label="Mes voyages"   onPress={() => router.push('/(tabs)/favoris' as any)} />
           <MenuRow icon="people-outline"             label="Mes groupes"   onPress={() => router.push('/groups' as any)} />
           <MenuRow icon="heart-outline"              label="Mes favoris"   onPress={() => router.push('/(tabs)/favoris' as any)} />
-          <MenuRow icon="images-outline"             label="Mes photos"    onPress={() => Alert.alert('Bientôt', 'Album souvenirs bientôt')} />
+          <MenuRow icon="images-outline"             label="Mes souvenirs" onPress={() => router.push('/souvenirs' as any)} />
           <MenuRow icon="settings-outline"           label="Paramètres"    onPress={() => router.push('/settings' as any)} />
           <MenuRow icon="help-circle-outline"        label="Aide & support" onPress={() => Linking.openURL('https://itinifly.fr')} />
         </View>

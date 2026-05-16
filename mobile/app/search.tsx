@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Autocomplete from '../components/Autocomplete';
 import DateField from '../components/DateField';
 import Button from '../components/Button';
+import PremiumLoader from '../components/PremiumLoader';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../lib/api';
 import { colors, fontSize, radius, spacing } from '../lib/theme';
@@ -66,7 +67,21 @@ export default function SearchScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      {loading && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <PremiumLoader
+            messages={[
+              'Calcul de votre itinéraire idéal…',
+              'Recherche des meilleurs vols…',
+              'Comparaison des hôtels disponibles…',
+              'Sélection des activités incontournables…',
+              'Optimisation du budget voyage…',
+              'Finalisation de votre expérience…',
+            ]}
+          />
+        </View>
+      )}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, opacity: loading ? 0 : 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>

@@ -26,8 +26,8 @@ function RootNav() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.sand[50] }}>
-        <ActivityIndicator size="large" color={colors.primary[700]} />
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ActivityIndicator size="large" color={colors.primary[500]} style={{ flex: 1 }} />
       </View>
     );
   }
@@ -55,6 +55,8 @@ function RootNav() {
       <Stack.Screen name="group-invite/[token]" />
       <Stack.Screen name="simulation/[id]" options={{ ...stackHeaderOptions, title: 'Détails' }} />
       <Stack.Screen name="subscription" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="souvenirs" />
     </Stack>
   );
 }
@@ -64,7 +66,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <RootNav />
         </AuthProvider>
       </SafeAreaProvider>
