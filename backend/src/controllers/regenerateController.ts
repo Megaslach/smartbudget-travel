@@ -68,10 +68,10 @@ export const regenerate = async (req: AuthRequest, res: Response): Promise<void>
         participants: sim.people,
       }).catch(() => []);
 
-      // Filter out kept names + take enough for total ~8 displayed
+      // Filter out kept names + take enough for total ~12 displayed
       const newOpts = real
         .filter((a) => !keepNames.includes(a.name))
-        .slice(0, Math.max(3, 8 - kept.length))
+        .slice(0, Math.max(6, 12 - kept.length))
         .map((a) => ({
           name: a.name,
           price: a.price,
@@ -144,7 +144,7 @@ Varie les gammes et les quartiers. Pas de doublons.`;
         if (real.hotels && real.hotels.length > 0) {
           const filtered = real.hotels
             .filter((h: any) => !keepNames.includes(h.name))
-            .slice(0, Math.max(3, 6 - kept.length))
+            .slice(0, Math.max(6, 12 - kept.length))
             .map((h: any) => ({
               name: h.name,
               type: h.type || 'Hôtel',

@@ -5,22 +5,30 @@ import { motion } from 'framer-motion';
 import { BudgetEstimate, AddonCategory } from '@/types';
 import Card from '@/components/atoms/Card';
 import AddonsCard from '@/components/molecules/AddonsCard';
-import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle, Car, Train, MapPin, Sparkles } from 'lucide-react';
+import { Plane, Hotel, Utensils, Bus, Ticket, TrendingUp, ExternalLink, Star, Clock, CheckCircle2, AlertTriangle, Car, Train, MapPin, Sparkles, RefreshCw } from 'lucide-react';
 
 interface BudgetResultCardProps {
   budget: BudgetEstimate;
   destination: string;
   duration: number;
   people: number;
+  /** When provided, enables the refresh + pin UI on hotels & activities sections. */
+  onRefresh?: (category: 'flights' | 'hotels' | 'activities', keepNames: string[]) => Promise<void>;
 }
 
 const confidenceColors = { high: 'bg-emerald-100 text-emerald-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-red-100 text-red-700' };
 const confidenceLabels = { high: 'Fiabilité haute', medium: 'Fiabilité moyenne', low: 'Estimation approximative' };
 
-export default function BudgetResultCard({ budget, destination, duration, people }: BudgetResultCardProps) {
+export default function BudgetResultCard({ budget, destination, duration, people, onRefresh }: BudgetResultCardProps) {
   const [transportMode, setTransportMode] = useState<'public' | 'car'>('public');
   const [selectedCarIndex, setSelectedCarIndex] = useState<number>(0);
   const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(new Set());
+  // Hotel selection — defaults to first (cheapest after backend sort).
+  const [selectedHotelIndex, setSelectedHotelIndex] = useState<number>(0);
+  // Pinning for refresh
+  const [pinnedHotels, setPinnedHotels] = useState<Set<string>>(new Set());
+  const [pinnedActivities, setPinnedActivities] = useState<Set<string>>(new Set());
+  const [refreshingCategory, setRefreshingCategory] = useState<null | 'flights' | 'hotels' | 'activities'>(null);
 
   const flightsTotal = budget.flights.avgPrice * people;
   const activitiesTotal = typeof budget.activities === 'object' ? budget.activities.total : budget.activities;
@@ -31,6 +39,13 @@ export default function BudgetResultCard({ budget, destination, duration, people
   const selectedCar = transportMode === 'car' && carOptions.length > 0 ? carOptions[Math.min(selectedCarIndex, carOptions.length - 1)] : null;
   const effectiveTransport = selectedCar ? selectedCar.totalPrice : budget.transport;
 
+  // Selected hotel drives the accommodation cost in real-time.
+  const hotelOptions = budget.accommodation.options || [];
+  const selectedHotel = hotelOptions[Math.min(selectedHotelIndex, hotelOptions.length - 1)];
+  const effectiveAccommodation = selectedHotel
+    ? selectedHotel.pricePerNight * duration
+    : budget.accommodation.total;
+
   const addons = budget.addons || [];
   const selectedAddons = useMemo(
     () => addons.filter((a) => selectedAddonIds.has(a.id)),
@@ -38,8 +53,43 @@ export default function BudgetResultCard({ budget, destination, duration, people
   );
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
 
-  const effectiveTotal = budget.total - budget.transport + effectiveTransport + addonsTotal;
+  const effectiveTotal =
+    budget.total
+    - budget.transport + effectiveTransport
+    - budget.accommodation.total + effectiveAccommodation
+    + addonsTotal;
   const totalPerPerson = perPerson(effectiveTotal);
+
+  const handleRefresh = async (category: 'flights' | 'hotels' | 'activities') => {
+    if (!onRefresh) return;
+    const keepNames =
+      category === 'hotels' ? Array.from(pinnedHotels)
+      : category === 'activities' ? Array.from(pinnedActivities)
+      : [];
+    setRefreshingCategory(category);
+    try {
+      await onRefresh(category, keepNames);
+      // Reset selection after refresh
+      if (category === 'hotels') setSelectedHotelIndex(0);
+    } finally {
+      setRefreshingCategory(null);
+    }
+  };
+
+  const togglePinnedHotel = (name: string) => {
+    setPinnedHotels((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
+  const togglePinnedActivity = (name: string) => {
+    setPinnedActivities((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
 
   const handleToggleAddon = (id: string, category: AddonCategory) => {
     setSelectedAddonIds((prev) => {
@@ -60,7 +110,17 @@ export default function BudgetResultCard({ budget, destination, duration, people
 
   const summaryCategories = [
     { label: 'Vols A/R', value: flightsTotal, perPerson: budget.flights.avgPrice, icon: Plane, color: 'text-sky-500', bg: 'bg-sky-50', hint: `${budget.flights.avgPrice.toLocaleString()}€/pers × ${people}` },
-    { label: 'Hébergement', value: budget.accommodation.total, perPerson: perPerson(budget.accommodation.total), icon: Hotel, color: 'text-indigo-500', bg: 'bg-indigo-50', hint: `${budget.accommodation.avgPerNight}€/nuit × ${duration} nuit${duration > 1 ? 's' : ''}` },
+    {
+      label: 'Hébergement',
+      value: effectiveAccommodation,
+      perPerson: perPerson(effectiveAccommodation),
+      icon: Hotel,
+      color: 'text-indigo-500',
+      bg: 'bg-indigo-50',
+      hint: selectedHotel
+        ? `${selectedHotel.name} — ${selectedHotel.pricePerNight}€/nuit × ${duration} nuit${duration > 1 ? 's' : ''}`
+        : `${budget.accommodation.avgPerNight}€/nuit × ${duration} nuit${duration > 1 ? 's' : ''}`,
+    },
     { label: 'Restauration', value: budget.food, perPerson: perPerson(budget.food), icon: Utensils, color: 'text-orange-500', bg: 'bg-orange-50', hint: `groupe de ${people}` },
     {
       label: 'Transport',
@@ -259,7 +319,7 @@ export default function BudgetResultCard({ budget, destination, duration, people
       {budget.accommodation.options && budget.accommodation.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Hotel className="h-5 w-5 text-indigo-500" /> Hébergement</h4>
                 {budget.accommodation.isRealData ? (
@@ -268,38 +328,96 @@ export default function BudgetResultCard({ budget, destination, duration, people
                   <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1" title="Estimation — vérifier le prix final sur Booking"><AlertTriangle className="h-3 w-3" />Prix indicatif</span>
                 )}
               </div>
-              <a href={budget.accommodation.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Booking <ExternalLink className="h-3 w-3" /></a>
+              <div className="flex items-center gap-2">
+                {onRefresh && (
+                  <button
+                    type="button"
+                    onClick={() => handleRefresh('hotels')}
+                    disabled={refreshingCategory !== null}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                    title={pinnedHotels.size > 0 ? `Garder ${pinnedHotels.size}, remplacer les autres` : 'Nouvelle sélection'}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${refreshingCategory === 'hotels' ? 'animate-spin' : ''}`} />
+                    {pinnedHotels.size > 0 ? `Rafraîchir (garder ${pinnedHotels.size})` : 'Rafraîchir'}
+                  </button>
+                )}
+                <a href={budget.accommodation.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">Voir sur Booking <ExternalLink className="h-3 w-3" /></a>
+              </div>
             </div>
+            <p className="text-[11px] text-gray-500 mb-3">
+              <strong className="text-indigo-700">Sélectionne</strong> un hébergement pour mettre à jour le total du voyage en direct.
+              {onRefresh && <> Épingle 📌 ceux qui te plaisent avant de rafraîchir pour les garder.</>}
+            </p>
             <div className="grid gap-3">
-              {budget.accommodation.options.map((h, i) => (
-                <a key={i} href={h.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-stretch gap-0 bg-white rounded-xl border border-indigo-100 overflow-hidden hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group">
-                  <div className="relative w-20 sm:w-32 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-indigo-50 overflow-hidden">
-                    {h.imageUrl ? (
-                      <img src={h.imageUrl} alt={h.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Hotel className="h-8 w-8 text-indigo-300" />
+              {budget.accommodation.options.map((h, i) => {
+                const isSelected = i === selectedHotelIndex;
+                const isPinned = pinnedHotels.has(h.name);
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedHotelIndex(i)}
+                    className={`flex items-stretch gap-0 bg-white rounded-xl border-2 overflow-hidden hover:shadow-lg hover:shadow-indigo-500/10 transition-all cursor-pointer ${
+                      isSelected ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-indigo-100 hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className="relative w-20 sm:w-32 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-indigo-50 overflow-hidden">
+                      {h.imageUrl ? (
+                        <img src={h.imageUrl} alt={h.name} loading="lazy" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Hotel className="h-8 w-8 text-indigo-300" />
+                        </div>
+                      )}
+                      {isSelected && (
+                        <div className="absolute top-1 left-1 bg-indigo-500 text-white rounded-full p-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 flex items-center gap-2 sm:gap-3 p-3 sm:p-4 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900 text-sm truncate">{h.name}</p>
+                          {isSelected && <span className="text-[10px] font-bold bg-indigo-500 text-white px-1.5 py-0.5 rounded">Sélectionné</span>}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          <span className="text-xs text-gray-500">{h.type}</span>
+                          {h.rating ? (
+                            <span className="text-xs text-amber-500 flex items-center gap-0.5 font-semibold"><Star className="h-3 w-3 fill-amber-400" />{h.rating}</span>
+                          ) : null}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex-1 flex items-center gap-2 sm:gap-3 p-3 sm:p-4 min-w-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm truncate">{h.name}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-gray-500">{h.type}</span>
-                        {h.rating ? (
-                          <span className="text-xs text-amber-500 flex items-center gap-0.5 font-semibold"><Star className="h-3 w-3 fill-amber-400" />{h.rating}</span>
-                        ) : null}
+                      <div className="text-right shrink-0 flex items-center gap-2">
+                        {onRefresh && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); togglePinnedHotel(h.name); }}
+                            className={`p-1.5 rounded-lg text-xs transition-colors ${
+                              isPinned ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            }`}
+                            title={isPinned ? 'Épinglé — sera conservé au refresh' : 'Épingler pour garder'}
+                          >
+                            <span className={isPinned ? '' : 'opacity-50'}>📌</span>
+                          </button>
+                        )}
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm sm:text-base whitespace-nowrap">{h.pricePerNight}€<span className="text-[10px] sm:text-xs text-gray-400 font-normal">/nuit</span></p>
+                          <p className="text-[10px] text-gray-400 whitespace-nowrap">{duration}n · {(h.pricePerNight * duration).toLocaleString()}€</p>
+                          <a
+                            href={h.bookingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] text-primary-500 hover:underline whitespace-nowrap"
+                          >
+                            Réserver →
+                          </a>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-gray-900 text-sm sm:text-base whitespace-nowrap">{h.pricePerNight}€<span className="text-[10px] sm:text-xs text-gray-400 font-normal">/nuit</span></p>
-                      <p className="text-[10px] text-gray-400 whitespace-nowrap">{duration}n · {(h.pricePerNight * duration).toLocaleString()}€</p>
-                      <span className="text-[10px] text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
-                    </div>
                   </div>
-                </a>
-              ))}
+                );
+              })}
             </div>
             <p className="text-xs text-gray-400 mt-3">{budget.accommodation.note}</p>
           </Card>
@@ -489,39 +607,75 @@ export default function BudgetResultCard({ budget, destination, duration, people
       {typeof budget.activities === 'object' && budget.activities.options && budget.activities.options.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Card>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h4 className="font-display text-lg font-bold text-gray-900 flex items-center gap-2"><Ticket className="h-5 w-5 text-purple-500" /> Activités incontournables</h4>
-              <a href={budget.activities.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">GetYourGuide <ExternalLink className="h-3 w-3" /></a>
+              <div className="flex items-center gap-2">
+                {onRefresh && (
+                  <button
+                    type="button"
+                    onClick={() => handleRefresh('activities')}
+                    disabled={refreshingCategory !== null}
+                    className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-purple-50 transition-colors disabled:opacity-50"
+                    title={pinnedActivities.size > 0 ? `Garder ${pinnedActivities.size}, remplacer les autres` : 'Nouvelles activités'}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${refreshingCategory === 'activities' ? 'animate-spin' : ''}`} />
+                    {pinnedActivities.size > 0 ? `Rafraîchir (garder ${pinnedActivities.size})` : 'Rafraîchir'}
+                  </button>
+                )}
+                <a href={budget.activities.searchUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">GetYourGuide <ExternalLink className="h-3 w-3" /></a>
+              </div>
             </div>
+            {onRefresh && (
+              <p className="text-[11px] text-gray-500 mb-3">
+                Épingle 📌 les activités qui te plaisent avant de rafraîchir pour les garder.
+              </p>
+            )}
             <div className="grid sm:grid-cols-2 gap-3">
-              {budget.activities.options.map((a, i) => (
-                <a key={i} href={a.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col bg-white rounded-xl border border-purple-100 overflow-hidden hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/10 transition-all group">
-                  <div className="relative h-32 bg-gradient-to-br from-purple-100 to-purple-50 overflow-hidden">
-                    {a.imageUrl ? (
-                      <img src={a.imageUrl} alt={a.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Ticket className="h-10 w-10 text-purple-300" />
-                      </div>
+              {(budget.activities as any).options.map((a: any, i: number) => {
+                const isPinned = pinnedActivities.has(a.name);
+                return (
+                  <div key={i} className="flex flex-col bg-white rounded-xl border border-purple-100 overflow-hidden hover:border-purple-300 hover:shadow-lg hover:shadow-purple-500/10 transition-all group relative">
+                    {onRefresh && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); togglePinnedActivity(a.name); }}
+                        className={`absolute top-2 left-2 z-10 p-1.5 rounded-lg text-xs transition-colors ${
+                          isPinned ? 'bg-amber-100 text-amber-700' : 'bg-white/90 text-gray-400 hover:bg-white'
+                        }`}
+                        title={isPinned ? 'Épinglée — sera conservée au refresh' : 'Épingler pour garder'}
+                      >
+                        <span className={isPinned ? '' : 'opacity-50'}>📌</span>
+                      </button>
                     )}
-                    <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
-                      <p className="font-bold text-sm text-gray-900">{a.price}€<span className="text-[10px] text-gray-400 font-normal">/pers</span></p>
-                    </div>
-                  </div>
-                  <div className="p-3 flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">{a.name}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-gray-400">{a.duration}</p>
-                        {people > 1 && (
-                          <p className="text-[10px] text-gray-400">· {(a.price * people).toLocaleString()}€ total</p>
+                    <a href={a.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col">
+                      <div className="relative h-32 bg-gradient-to-br from-purple-100 to-purple-50 overflow-hidden">
+                        {a.imageUrl ? (
+                          <img src={a.imageUrl} alt={a.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Ticket className="h-10 w-10 text-purple-300" />
+                          </div>
                         )}
+                        <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm">
+                          <p className="font-bold text-sm text-gray-900">{a.price}€<span className="text-[10px] text-gray-400 font-normal">/pers</span></p>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
+                      <div className="p-3 flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{a.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-gray-400">{a.duration}</p>
+                            {people > 1 && (
+                              <p className="text-[10px] text-gray-400">· {(a.price * people).toLocaleString()}€ total</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-semibold text-primary-500 group-hover:underline whitespace-nowrap">Réserver →</span>
+                      </div>
+                    </a>
                   </div>
-                </a>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </motion.div>

@@ -122,7 +122,7 @@ export async function searchAmadeusHotels(params: {
       })
       .filter((h: AmadeusHotelOffer) => h.totalPrice > 0)
       .sort((a: AmadeusHotelOffer, b: AmadeusHotelOffer) => a.pricePerNight - b.pricePerNight)
-      .slice(0, 5);
+      .slice(0, 12);
 
     console.log(`Found ${hotels.length} real Amadeus hotels`);
     return hotels;

@@ -105,7 +105,7 @@ export async function searchSerpApiHotels(params: {
       })
       .filter((h): h is SerpApiHotelOffer => h !== null)
       .sort((a, b) => a.pricePerNight - b.pricePerNight)
-      .slice(0, 5);
+      .slice(0, 12);
 
     console.log(`Found ${hotels.length} real SerpApi hotels`);
     return hotels.length > 0 ? hotels : null;

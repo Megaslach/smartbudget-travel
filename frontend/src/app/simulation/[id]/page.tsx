@@ -27,6 +27,21 @@ export default function SimulationDetailPage() {
   const [sharing, setSharing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const handleRefresh = async (category: 'flights' | 'hotels' | 'activities', keepNames: string[]) => {
+    if (!sim) return;
+    try {
+      const { simulation } = await api.regenerateOptions(sim.id, category, keepNames);
+      setSim(simulation);
+      toast.success(
+        category === 'flights' ? 'Vols mis à jour'
+          : category === 'hotels' ? 'Hôtels mis à jour'
+          : 'Activités mises à jour'
+      );
+    } catch (e: any) {
+      toast.error(e?.error || 'Erreur de rafraîchissement');
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -142,7 +157,13 @@ export default function SimulationDetailPage() {
         {/* Detailed budget */}
         {sim.budgetData && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6">
-            <BudgetResultCard budget={sim.budgetData} destination={sim.destination} duration={sim.duration} people={sim.people} />
+            <BudgetResultCard
+              budget={sim.budgetData}
+              destination={sim.destination}
+              duration={sim.duration}
+              people={sim.people}
+              onRefresh={handleRefresh}
+            />
           </motion.div>
         )}
 

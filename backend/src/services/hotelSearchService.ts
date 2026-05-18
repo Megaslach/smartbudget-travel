@@ -133,7 +133,7 @@ export async function searchRealHotels(params: {
       })
       .filter((h: RealHotelOffer) => h.totalPrice > 0)
       .sort((a: RealHotelOffer, b: RealHotelOffer) => a.pricePerNight - b.pricePerNight)
-      .slice(0, 5);
+      .slice(0, 12);
 
     console.log(`Found ${results.length} real hotel offers`);
     return results;
