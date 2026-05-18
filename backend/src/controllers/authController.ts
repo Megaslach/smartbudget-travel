@@ -13,6 +13,9 @@ function generateToken(userId: string): string {
 function serializeUser(user: {
   id: string;
   email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
   isPremium: boolean;
   premiumUntil?: Date | null;
   premiumPlan?: string | null;
@@ -21,6 +24,9 @@ function serializeUser(user: {
   return {
     id: user.id,
     email: user.email,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
+    avatarUrl: user.avatarUrl ?? null,
     isPremium: isPremiumActive({ isPremium: user.isPremium, premiumUntil: user.premiumUntil ?? null }),
     premiumUntil: user.premiumUntil ?? null,
     premiumPlan: user.premiumPlan ?? null,
@@ -95,11 +101,16 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const USER_SELECT = {
+  id: true, email: true, firstName: true, lastName: true, avatarUrl: true,
+  isPremium: true, premiumUntil: true, premiumPlan: true, createdAt: true,
+};
+
 export const getMe = async (req: Request & { userId?: string }, res: Response): Promise<void> => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
-      select: { id: true, email: true, isPremium: true, premiumUntil: true, premiumPlan: true, createdAt: true },
+      select: USER_SELECT,
     });
 
     if (!user) {
@@ -116,7 +127,7 @@ export const getMe = async (req: Request & { userId?: string }, res: Response): 
 
 export const updateProfile = async (req: Request & { userId?: string }, res: Response): Promise<void> => {
   try {
-    const { email, currentPassword, newPassword } = req.body;
+    const { email, currentPassword, newPassword, firstName, lastName, avatarUrl } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
 
     if (!user) {
@@ -133,6 +144,31 @@ export const updateProfile = async (req: Request & { userId?: string }, res: Res
         return;
       }
       updates.email = email;
+    }
+
+    if (typeof firstName === 'string') {
+      const trimmed = firstName.trim().slice(0, 60);
+      updates.firstName = trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof lastName === 'string') {
+      const trimmed = lastName.trim().slice(0, 60);
+      updates.lastName = trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof avatarUrl === 'string') {
+      // Accept data URLs (base64) or http(s) URLs. Reject anything else.
+      // Hard cap at 200KB to keep the DB row small.
+      if (avatarUrl === '') {
+        updates.avatarUrl = null;
+      } else if (/^(data:image\/(jpeg|png|webp);base64,|https?:\/\/)/.test(avatarUrl)) {
+        if (avatarUrl.length > 200_000) {
+          res.status(413).json({ error: 'Image trop volumineuse (max ~150 KB après compression)' });
+          return;
+        }
+        updates.avatarUrl = avatarUrl;
+      } else {
+        res.status(400).json({ error: "Format d'image non supporté" });
+        return;
+      }
     }
 
     if (newPassword) {
@@ -156,7 +192,7 @@ export const updateProfile = async (req: Request & { userId?: string }, res: Res
     const updated = await prisma.user.update({
       where: { id: req.userId },
       data: updates,
-      select: { id: true, email: true, isPremium: true, premiumUntil: true, premiumPlan: true, createdAt: true },
+      select: USER_SELECT,
     });
 
     res.json({ user: serializeUser(updated) });

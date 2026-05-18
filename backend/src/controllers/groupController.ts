@@ -24,7 +24,7 @@ export const createGroup = async (req: AuthRequest, res: Response): Promise<void
         ownerId: req.userId!,
         members: { create: { userId: req.userId!, role: 'owner' } },
       },
-      include: { members: { include: { user: { select: { id: true, email: true } } } } },
+      include: { members: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } } } },
     });
 
     res.status(201).json({ group });
@@ -42,7 +42,7 @@ export const listGroups = async (req: AuthRequest, res: Response): Promise<void>
       include: {
         group: {
           include: {
-            members: { include: { user: { select: { id: true, email: true } } } },
+            members: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } } },
             _count: { select: { members: true } },
           },
         },
@@ -78,7 +78,7 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
     const group = await prisma.tripGroup.findUnique({
       where: { id },
       include: {
-        members: { include: { user: { select: { id: true, email: true } } } },
+        members: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } } },
         simulations: {
           include: {
             simulation: {
@@ -90,8 +90,8 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
               },
             },
             proposer: { select: { id: true, email: true } },
-            votes: { include: { user: { select: { id: true, email: true } } } },
-            itemVotes: { include: { user: { select: { id: true, email: true } } } },
+            votes: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } } },
+            itemVotes: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } } },
           },
           orderBy: { createdAt: 'desc' },
         },
@@ -202,7 +202,7 @@ export const proposeGroupSimulation = async (req: AuthRequest, res: Response): P
       include: {
         simulation: true,
         proposer: { select: { id: true, email: true } },
-        votes: { include: { user: { select: { id: true, email: true } } } },
+        votes: { include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } } },
       },
     });
     res.json({ proposal });

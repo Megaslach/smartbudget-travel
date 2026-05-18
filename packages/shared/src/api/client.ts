@@ -73,7 +73,14 @@ export class ApiClient {
     return this.request('/auth/me');
   }
 
-  updateProfile(data: { email?: string; currentPassword?: string; newPassword?: string }): Promise<{ user: AuthResponse['user'] }> {
+  updateProfile(data: {
+    email?: string;
+    currentPassword?: string;
+    newPassword?: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+  }): Promise<{ user: AuthResponse['user'] }> {
     return this.request('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(data),

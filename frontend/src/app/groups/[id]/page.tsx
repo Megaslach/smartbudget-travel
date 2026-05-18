@@ -522,29 +522,39 @@ export default function GroupDetailPage() {
         {/* Members */}
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Membres</h2>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6 space-y-1">
-          {group.members.map((m) => (
-            <div key={m.id} className="flex items-center gap-3 py-2">
-              <div className="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-bold">
-                {(m.user.email || '?')[0].toUpperCase()}
+          {group.members.map((m) => {
+            const memberName = [m.user.firstName, m.user.lastName].filter(Boolean).join(' ').trim() || m.user.email.split('@')[0];
+            const memberInitials = ((m.user.firstName?.[0] ?? '') + (m.user.lastName?.[0] ?? '')).toUpperCase() || (m.user.email || '?')[0].toUpperCase();
+            return (
+              <div key={m.id} className="flex items-center gap-3 py-2">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-700 text-white flex items-center justify-center font-bold flex-shrink-0">
+                  {m.user.avatarUrl ? (
+                    <img src={m.user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    memberInitials
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {memberName}
+                    {m.userId === user?.id && <span className="text-gray-400 font-normal"> (toi)</span>}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    {m.role === 'owner' ? '👑 Propriétaire' : 'Membre'} · {m.user.email}
+                  </p>
+                </div>
+                {isOwner && m.userId !== user?.id && (
+                  <button
+                    onClick={() => handleKick(m.userId, memberName)}
+                    className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+                    title="Retirer du groupe"
+                  >
+                    <UserX className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {m.user.email}
-                  {m.userId === user?.id && <span className="text-gray-400 font-normal"> (toi)</span>}
-                </p>
-                <p className="text-xs text-gray-400">{m.role === 'owner' ? '👑 Propriétaire' : 'Membre'}</p>
-              </div>
-              {isOwner && m.userId !== user?.id && (
-                <button
-                  onClick={() => handleKick(m.userId, m.user.email)}
-                  className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
-                  title="Retirer du groupe"
-                >
-                  <UserX className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <button

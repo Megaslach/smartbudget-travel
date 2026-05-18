@@ -40,7 +40,8 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+// 1MB body limit: enough for avatar uploads (~150KB base64) and any reasonable JSON payload.
+app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.use('/api/auth', authRoutes);

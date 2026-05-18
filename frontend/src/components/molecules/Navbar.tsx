@@ -42,11 +42,17 @@ export default function Navbar() {
                     Dashboard
                   </Button>
                 </Link>
-                <Link href="/profile">
-                  <Button variant="ghost" size="sm">
-                    <UserCircle className="h-4 w-4" />
-                    Profil
-                  </Button>
+                <Link href="/profile" className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-sand-100 transition-colors">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover border border-gray-200" />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full bg-primary-700 text-white flex items-center justify-center text-xs font-bold">
+                      {((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')).toUpperCase() || user.email[0].toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-gray-700 truncate max-w-[120px]">
+                    {[user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email.split('@')[0]}
+                  </span>
                 </Link>
                 <Link href="/propose">
                   <Button variant="ghost" size="sm">

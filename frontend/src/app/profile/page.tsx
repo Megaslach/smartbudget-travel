@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Crown, Calendar, Shield, Trash2, Save, LogOut, Sparkles, MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { User, Mail, Lock, Crown, Calendar, Shield, Trash2, Save, LogOut, Sparkles, MapPin, CheckCircle2, AlertTriangle, Camera, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/templates/DashboardLayout';
@@ -20,10 +20,14 @@ export default function ProfilePage() {
   const router = useRouter();
 
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [simCount, setSimCount] = useState(0);
@@ -32,9 +36,90 @@ export default function ProfilePage() {
     if (!authLoading && !user) { router.push('/login'); return; }
     if (user) {
       setEmail(user.email);
+      setFirstName(user.firstName ?? '');
+      setLastName(user.lastName ?? '');
+      setAvatarUrl(user.avatarUrl ?? null);
       api.getUserSimulations().then(d => setSimCount(d.simulations.length)).catch(() => {});
     }
   }, [user, authLoading, router]);
+
+  // Resize the uploaded image client-side to keep payload small (max 256x256, JPEG q=0.82).
+  const resizeImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 256;
+          const ratio = Math.min(max / img.width, max / img.height, 1);
+          const w = Math.round(img.width * ratio);
+          const h = Math.round(img.height * ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('Canvas non supporté'));
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => reject(new Error("Image illisible"));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error("Lecture du fichier impossible"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image trop volumineuse (max 5 MB)');
+      return;
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      toast.error('Format non supporté (JPEG, PNG, WebP)');
+      return;
+    }
+    try {
+      const dataUrl = await resizeImage(file);
+      setAvatarUrl(dataUrl);
+      setIsSavingIdentity(true);
+      await api.updateProfile({ avatarUrl: dataUrl });
+      await refreshUser();
+      toast.success('Photo de profil mise à jour');
+    } catch (err: any) {
+      toast.error(err?.error || err?.message || 'Erreur');
+    } finally {
+      setIsSavingIdentity(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setIsSavingIdentity(true);
+    try {
+      await api.updateProfile({ avatarUrl: '' });
+      setAvatarUrl(null);
+      await refreshUser();
+      toast.success('Photo retirée');
+    } catch (err: any) {
+      toast.error(err?.error || 'Erreur');
+    } finally {
+      setIsSavingIdentity(false);
+    }
+  };
+
+  const handleSaveIdentity = async () => {
+    setIsSavingIdentity(true);
+    try {
+      await api.updateProfile({ firstName, lastName });
+      await refreshUser();
+      toast.success('Identité mise à jour');
+    } catch (err: any) {
+      toast.error(err?.error || 'Erreur');
+    } finally {
+      setIsSavingIdentity(false);
+    }
+  };
 
   const handleSaveEmail = async () => {
     if (!email || email === user?.email) {
@@ -107,7 +192,11 @@ export default function ProfilePage() {
   }
 
   const memberSince = user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-  const initials = user.email.slice(0, 2).toUpperCase();
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email.split('@')[0];
+  const initials = (
+    ((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')).toUpperCase()
+    || user.email.slice(0, 2).toUpperCase()
+  );
 
   return (
     <DashboardLayout title="Mon Profil" description="Gérez vos informations personnelles et votre compte">
@@ -118,19 +207,50 @@ export default function ProfilePage() {
             <Card>
               <div className="text-center">
                 <div className="relative inline-block mb-4">
-                  <div className={`h-24 w-24 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg ${user.isPremium ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-primary-500 to-primary-700'}`}>
-                    {initials}
+                  <div className={`h-24 w-24 rounded-full overflow-hidden flex items-center justify-center text-3xl font-bold text-white shadow-lg ${user.isPremium ? 'bg-gradient-to-br from-amber-400 to-orange-500' : 'bg-gradient-to-br from-primary-500 to-primary-700'}`}>
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Photo de profil" className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
                   </div>
+                  <label
+                    htmlFor="avatar-upload"
+                    className="absolute -bottom-1 -right-1 bg-white rounded-full p-2 shadow-md cursor-pointer hover:bg-sand-50 border border-gray-200 transition-colors"
+                    title="Changer la photo"
+                  >
+                    <Camera className="h-4 w-4 text-gray-700" />
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
                   {user.isPremium && (
                     <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-1.5 shadow-md">
                       <Crown className="h-4 w-4 text-white" />
                     </div>
                   )}
                 </div>
-                <h3 className="font-bold text-lg text-gray-900 truncate">{user.email}</h3>
-                <Badge variant={user.isPremium ? 'premium' : 'default'} className="mt-2">
-                  {user.isPremium ? '✨ Premium' : 'Compte Gratuit'}
-                </Badge>
+                <h3 className="font-bold text-lg text-gray-900 truncate">{displayName}</h3>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                  <Badge variant={user.isPremium ? 'premium' : 'default'}>
+                    {user.isPremium ? '✨ Premium' : 'Compte Gratuit'}
+                  </Badge>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveAvatar}
+                      disabled={isSavingIdentity}
+                      className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1"
+                    >
+                      <X className="h-3 w-3" />Retirer photo
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 space-y-3 pt-6 border-t border-gray-100">
@@ -178,8 +298,40 @@ export default function ProfilePage() {
 
         {/* Right column: Forms */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Email */}
+          {/* Identity */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600"><User className="h-5 w-5" /></div>
+                <div>
+                  <h3 className="font-bold text-gray-900">Identité</h3>
+                  <p className="text-xs text-gray-500">Comment tu apparais dans les groupes et partages</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="firstName">Prénom</Label>
+                  <Input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Jean" maxLength={60} />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Nom</Label>
+                  <Input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Dupont" maxLength={60} />
+                </div>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSaveIdentity}
+                disabled={isSavingIdentity || (firstName === (user.firstName ?? '') && lastName === (user.lastName ?? ''))}
+                className="mt-4"
+              >
+                <Save className="h-4 w-4" /> Enregistrer
+              </Button>
+            </Card>
+          </motion.div>
+
+          {/* Email */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
             <Card>
               <div className="flex items-center gap-3 mb-5">
                 <div className="p-2 rounded-xl bg-primary-50 text-primary-600"><Mail className="h-5 w-5" /></div>

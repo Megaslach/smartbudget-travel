@@ -1,6 +1,9 @@
 export interface User {
   id: string;
   email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
   isPremium: boolean;
   premiumUntil?: string | null;
   premiumPlan?: 'oneshot' | 'annual' | null;
@@ -215,7 +218,7 @@ export interface TripGroupMember {
   userId: string;
   role: string;
   joinedAt: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; firstName?: string | null; lastName?: string | null; avatarUrl?: string | null };
 }
 
 export interface TripGroup {
@@ -237,7 +240,7 @@ export interface GroupVote {
   vote: 'up' | 'down';
   comment?: string | null;
   createdAt: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; firstName?: string | null; lastName?: string | null; avatarUrl?: string | null };
 }
 
 export interface GroupItemVote {
