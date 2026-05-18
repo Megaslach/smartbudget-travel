@@ -238,12 +238,16 @@ export async function searchFlightsCascade(input: SimulationInput): Promise<{
     { fn: () => searchRealFlights(params), name: 'skyscanner' },
   ];
 
+  // 45s total budget across all 4 providers (multi-airport SerpAPI alone
+  // does up to 6 parallel sub-calls). Each provider gets up to 25s.
+  const TOTAL_BUDGET_MS = 45000;
+  const PER_PROVIDER_MS = 25000;
   const cascadeStart = Date.now();
   for (const p of providers) {
-    if (Date.now() - cascadeStart > 20000) break;
+    if (Date.now() - cascadeStart > TOTAL_BUDGET_MS) break;
     try {
-      const remaining = Math.max(3000, 20000 - (Date.now() - cascadeStart));
-      const result = await withTimeout(p.fn(), Math.min(12000, remaining), `Flight:${p.name}`);
+      const remaining = Math.max(5000, TOTAL_BUDGET_MS - (Date.now() - cascadeStart));
+      const result = await withTimeout(p.fn(), Math.min(PER_PROVIDER_MS, remaining), `Flight:${p.name}`);
       if (result && result.flights && result.flights.length > 0) {
         console.log(`[flights] ${p.name} returned ${result.flights.length} results in ${Date.now() - cascadeStart}ms`);
         return { flights: result.flights, source: p.name, originCode: result.originCode || '', destCode: result.destCode || '' };

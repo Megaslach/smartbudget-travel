@@ -33,6 +33,29 @@ function resolveIata(cityInput: string): string | null {
   return null;
 }
 
+/** Resolve ALL airport IATA codes for a city (Paris → CDG, ORY, BVA). */
+function resolveAllIata(cityInput: string): string[] {
+  const codeMatch = cityInput.match(/\(([A-Z]{3})\)/);
+  if (codeMatch) return [codeMatch[1]];
+
+  const cleaned = cityInput.replace(/\s*\([A-Z]{3}\)\s*$/, '').split(',')[0].trim();
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const q = norm(cleaned);
+  const city = cities.find(c => norm(c.name) === q);
+  if (city && city.airports.length > 0) {
+    return city.airports.map((a) => a.code);
+  }
+  return [];
+}
+
+/** Build a Skyscanner deep-link that pre-fills origin, dest, dates and adults. */
+function buildSkyscannerDeepLink(originCode: string, destCode: string, startDate: string, endDate: string, people: number, cabinClass: string): string {
+  const fmt = (d: string) => d.replace(/-/g, '').slice(2); // YYYY-MM-DD → YYMMDD
+  const cabin = cabinClass === 'business' ? 'business' : cabinClass === 'first' ? 'first' : cabinClass === 'premium_economy' ? 'premiumeconomy' : 'economy';
+  return `https://www.skyscanner.fr/transport/vols/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${fmt(startDate)}/${fmt(endDate)}/?adultes=${people}&cabineclass=${cabin}`;
+}
+
+
 function formatMinutes(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
@@ -135,41 +158,55 @@ export async function searchSerpApiFlights(params: {
     return null;
   }
 
-  const originCode = resolveIata(params.departureCity);
-  const destCode = resolveIata(params.destination);
+  // Resolve ALL airports for both city inputs — searching CDG only when Paris
+  // has CDG+ORY+BVA misses the cheaper Beauvais flights. We search up to 2
+  // airports per side in parallel and keep the best.
+  const originCodes = resolveAllIata(params.departureCity).slice(0, 2);
+  const destCodes = resolveAllIata(params.destination).slice(0, 2);
 
-  if (!originCode || !destCode) {
-    console.log(`SerpApi: could not resolve IATA codes. origin=${originCode}, dest=${destCode}`);
+  if (originCodes.length === 0 || destCodes.length === 0) {
+    console.log(`SerpApi: could not resolve IATA codes. origins=${originCodes.join(',') || 'none'}, dests=${destCodes.join(',') || 'none'}`);
     return null;
   }
 
-  console.log(`SerpApi Google Flights (parallel best + cheapest): ${originCode} → ${destCode} (${params.startDate} → ${params.endDate})`);
+  const originCode = originCodes[0];
+  const destCode = destCodes[0];
 
-  const fetchBase: Omit<FetchParams, 'sortBy'> = {
-    origin: originCode,
-    destination: destCode,
-    startDate: params.startDate,
-    endDate: params.endDate,
-    people: params.people,
-    flightClass: params.flightClass,
-    directOnly: params.directFlightOnly,
-    timePref: params.flightTimePreference,
-  };
+  console.log(`SerpApi Google Flights (multi-airport): origins=[${originCodes.join(',')}] → dests=[${destCodes.join(',')}] (${params.startDate} → ${params.endDate})`);
 
-  // 2 calls in parallel — different sort orders cover both ends of the spectrum.
-  // Google Flights only returns ~10 items per sort order; combining widens the pool.
-  const [byBest, byCheapest] = await Promise.all([
-    fetchSerpApi({ ...fetchBase, sortBy: 1 }).catch(() => []),
-    fetchSerpApi({ ...fetchBase, sortBy: 2 }).catch(() => []),
-  ]);
+  // Build all O×D combinations × 2 sort orders. Cap at 6 calls to stay under
+  // SerpAPI rate limits and within the cascade timeout budget.
+  const calls: FetchParams[] = [];
+  for (const o of originCodes) {
+    for (const d of destCodes) {
+      for (const sortBy of [1, 2] as const) {
+        calls.push({
+          origin: o,
+          destination: d,
+          startDate: params.startDate,
+          endDate: params.endDate,
+          people: params.people,
+          flightClass: params.flightClass,
+          directOnly: params.directFlightOnly,
+          timePref: params.flightTimePreference,
+          sortBy,
+        });
+      }
+    }
+  }
 
-  const merged = [...byBest, ...byCheapest];
+  const cappedCalls = calls.slice(0, 6);
+  const results = await Promise.all(cappedCalls.map((c) => fetchSerpApi(c).catch(() => [])));
+  const merged = results.flat();
+
   if (merged.length === 0) {
-    console.log('SerpApi: no flights found');
+    console.log('SerpApi: no flights found across all airport combinations');
     return null;
   }
 
-  const bookingBase = `https://www.google.com/travel/flights?q=Flights+from+${originCode}+to+${destCode}+on+${params.startDate}+through+${params.endDate}`;
+  // Skyscanner deep-link as universal fallback — reliably pre-fills origin,
+  // dest, dates, adults, cabin (Google's bookingBase only kept the origin).
+  const bookingBase = buildSkyscannerDeepLink(originCode, destCode, params.startDate, params.endDate, params.people, params.flightClass || 'economy');
 
   // Dedup by airline + price + duration signature
   const seen = new Set<string>();
@@ -193,6 +230,18 @@ export async function searchSerpApiFlights(params: {
     if (seen.has(sig)) continue;
     seen.add(sig);
 
+    // Per-flight booking URL: Skyscanner deep-link is the most reliable —
+    // pre-fills origin, dest, dates, adults, cabin so the user lands directly
+    // on the filtered results page (Google's booking_token expires in hours).
+    // We also try to bias toward the specific airline when its code looks valid.
+    const ssOrigin = firstLeg.departure_airport?.id || originCode;
+    const ssDest = lastLeg.arrival_airport?.id || destCode;
+    const flightBookingUrl = buildSkyscannerDeepLink(
+      ssOrigin, ssDest,
+      params.startDate, params.endDate, params.people,
+      params.flightClass || 'economy',
+    );
+
     flights.push({
       airline: airlineCode,
       airlineName,
@@ -206,9 +255,7 @@ export async function searchSerpApiFlights(params: {
       totalMinutes,
       stops,
       cabinClass: params.flightClass || 'economy',
-      bookingUrl: it.booking_token
-        ? `https://www.google.com/travel/flights/booking?token=${it.booking_token}`
-        : bookingBase,
+      bookingUrl: flightBookingUrl,
       source: 'serpapi' as const,
     });
   }
