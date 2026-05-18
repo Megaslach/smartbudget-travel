@@ -148,6 +148,9 @@ export class ApiClient {
   leaveGroup(id: string): Promise<{ success: boolean }> {
     return this.request(`/groups/${id}`, { method: 'DELETE' });
   }
+  updateGroup(id: string, data: { name?: string; emoji?: string; notes?: string }): Promise<{ group: TripGroup }> {
+    return this.request(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
   kickGroupMember(id: string, userId: string): Promise<{ success: boolean }> {
     return this.request(`/groups/${id}/members/${userId}`, { method: 'DELETE' });
   }
@@ -160,10 +163,10 @@ export class ApiClient {
   removeGroupSimulation(id: string, proposalId: string): Promise<{ success: boolean }> {
     return this.request(`/groups/${id}/proposals/${proposalId}`, { method: 'DELETE' });
   }
-  voteOnGroupSimulation(id: string, proposalId: string, vote: 'up' | 'down'): Promise<{ vote: any }> {
+  voteOnGroupSimulation(id: string, proposalId: string, vote: 'up' | 'down', comment?: string): Promise<{ vote: any }> {
     return this.request(`/groups/${id}/proposals/${proposalId}/vote`, {
       method: 'POST',
-      body: JSON.stringify({ vote }),
+      body: JSON.stringify({ vote, comment }),
     });
   }
   removeVoteOnGroupSimulation(id: string, proposalId: string): Promise<{ success: boolean }> {

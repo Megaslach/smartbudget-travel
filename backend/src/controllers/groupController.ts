@@ -98,6 +98,33 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
   }
 };
 
+/** Update group name, emoji, or shared notes (owner only). */
+export const updateGroup = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, emoji, notes } = req.body as { name?: string; emoji?: string; notes?: string };
+    const member = await prisma.tripGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: req.userId! } },
+    });
+    if (!member) {
+      res.status(404).json({ error: 'Groupe non trouvé' });
+      return;
+    }
+    // Owner can change everything; members can only edit shared notes
+    const isOwner = member.role === 'owner';
+    const data: { name?: string; emoji?: string; notes?: string | null } = {};
+    if (isOwner && typeof name === 'string' && name.trim().length >= 2) data.name = name.trim();
+    if (isOwner && typeof emoji === 'string' && emoji.length > 0) data.emoji = emoji;
+    if (typeof notes === 'string') data.notes = notes.length > 0 ? notes : null;
+
+    const group = await prisma.tripGroup.update({ where: { id }, data });
+    res.json({ group });
+  } catch (error) {
+    console.error('UpdateGroup error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
 /** Kick a member from a group (owner only, cannot kick self). */
 export const kickGroupMember = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -188,11 +215,11 @@ export const removeGroupSimulation = async (req: AuthRequest, res: Response): Pr
   }
 };
 
-/** Vote up/down on a group simulation proposal (members only). */
+/** Vote up/down on a group simulation proposal (members only). Optional comment. */
 export const voteOnGroupSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id, proposalId } = req.params;
-    const { vote } = req.body as { vote?: 'up' | 'down' };
+    const { vote, comment } = req.body as { vote?: 'up' | 'down'; comment?: string };
     if (vote !== 'up' && vote !== 'down') {
       res.status(400).json({ error: 'vote doit être "up" ou "down"' });
       return;
@@ -212,10 +239,11 @@ export const voteOnGroupSimulation = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
+    const trimmedComment = typeof comment === 'string' ? comment.trim().slice(0, 500) : '';
     const saved = await prisma.groupVote.upsert({
       where: { groupSimulationId_userId: { groupSimulationId: proposalId, userId: req.userId! } },
-      update: { vote },
-      create: { groupSimulationId: proposalId, userId: req.userId!, vote },
+      update: { vote, comment: trimmedComment || null },
+      create: { groupSimulationId: proposalId, userId: req.userId!, vote, comment: trimmedComment || null },
     });
     res.json({ vote: saved });
   } catch (error) {

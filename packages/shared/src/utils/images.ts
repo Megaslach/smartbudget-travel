@@ -43,6 +43,100 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
   default:   'https://images.pexels.com/photos/2245436/pexels-photo-2245436.jpeg?auto=compress&w=940',
 };
 
+// French → English city name translations (for image search).
+// Pexels returns better photos for English city names.
+const FR_TO_EN: Record<string, string> = {
+  'cracovie': 'Krakow',
+  'varsovie': 'Warsaw',
+  'venise': 'Venice',
+  'florence': 'Florence',
+  'rome': 'Rome',
+  'naples': 'Naples',
+  'séville': 'Seville',
+  'seville': 'Seville',
+  'lisbonne': 'Lisbon',
+  'porto': 'Porto',
+  'munich': 'Munich',
+  'berlin': 'Berlin',
+  'bruxelles': 'Brussels',
+  'vienne': 'Vienna',
+  'prague': 'Prague',
+  'budapest': 'Budapest',
+  'athènes': 'Athens',
+  'athenes': 'Athens',
+  'santorin': 'Santorini',
+  'mykonos': 'Mykonos',
+  'londres': 'London',
+  'edimbourg': 'Edinburgh',
+  'édimbourg': 'Edinburgh',
+  'dublin': 'Dublin',
+  'reykjavik': 'Reykjavik',
+  'copenhague': 'Copenhagen',
+  'stockholm': 'Stockholm',
+  'oslo': 'Oslo',
+  'helsinki': 'Helsinki',
+  'marrakech': 'Marrakech',
+  'fès': 'Fes',
+  'fes': 'Fes',
+  'le caire': 'Cairo',
+  'tunis': 'Tunis',
+  'le cap': 'Cape Town',
+  'dubaï': 'Dubai',
+  'dubai': 'Dubai',
+  'petra': 'Petra Jordan',
+  'bangkok': 'Bangkok',
+  'phuket': 'Phuket',
+  'chiang mai': 'Chiang Mai',
+  'bali': 'Bali Indonesia',
+  'tokyo': 'Tokyo',
+  'kyoto': 'Kyoto',
+  'séoul': 'Seoul',
+  'seoul': 'Seoul',
+  'hong kong': 'Hong Kong',
+  'singapour': 'Singapore',
+  'hanoï': 'Hanoi',
+  'hanoi': 'Hanoi',
+  'hoi an': 'Hoi An',
+  'delhi': 'Delhi',
+  'goa': 'Goa beach',
+  'new york': 'New York',
+  'los angeles': 'Los Angeles',
+  'miami': 'Miami',
+  'montréal': 'Montreal',
+  'montreal': 'Montreal',
+  'toronto': 'Toronto',
+  'mexico': 'Mexico City',
+  'cancún': 'Cancun beach',
+  'cancun': 'Cancun beach',
+  'rio': 'Rio de Janeiro',
+  'buenos aires': 'Buenos Aires',
+  'cusco': 'Cusco Peru',
+  'sydney': 'Sydney',
+  'maurice': 'Mauritius',
+  'saint-denis': 'Reunion island',
+  'istanbul': 'Istanbul',
+  'amsterdam': 'Amsterdam',
+  'barcelone': 'Barcelona',
+  'madrid': 'Madrid',
+};
+
+// Region-based fallbacks — guarantees a beautiful travel photo
+// when the specific city query returns nothing.
+const REGION_FALLBACKS: Record<string, string> = {
+  europe:    'https://images.pexels.com/photos/532826/pexels-photo-532826.jpeg?auto=compress&w=940',
+  asia:      'https://images.pexels.com/photos/2070033/pexels-photo-2070033.jpeg?auto=compress&w=940',
+  americas:  'https://images.pexels.com/photos/2129796/pexels-photo-2129796.jpeg?auto=compress&w=940',
+  africa:    'https://images.pexels.com/photos/2098427/pexels-photo-2098427.jpeg?auto=compress&w=940',
+  oceania:   'https://images.pexels.com/photos/995765/pexels-photo-995765.jpeg?auto=compress&w=940',
+  beach:     'https://images.pexels.com/photos/1450353/pexels-photo-1450353.jpeg?auto=compress&w=940',
+  default:   'https://images.pexels.com/photos/346885/pexels-photo-346885.jpeg?auto=compress&w=940',
+};
+
+const translateToEnglish = (city: string): string => {
+  const norm = city.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return FR_TO_EN[norm] || FR_TO_EN[city.toLowerCase()] || city;
+};
+
 export const getCategoryFallback = (category?: string) =>
   CATEGORY_FALLBACKS[category || 'default'] || CATEGORY_FALLBACKS.default;
 
@@ -134,23 +228,29 @@ export function createImageFetcher(config: ImageFetcherConfig) {
   const { pexelsKey, pixabayKey } = config;
 
   const getDestinationImage = (destination: string): Promise<string> => {
-    if (!destination) return Promise.resolve(loremFlickr('travel,city'));
+    if (!destination) return Promise.resolve(REGION_FALLBACKS.default);
     const clean = cleanCity(destination);
+    const english = translateToEnglish(clean);
     const key = `dest:${clean.toLowerCase()}`;
     return resolve(key, async () => {
-      const pexels = await fetchPexels(pexelsKey, `${clean} travel`);
-      if (pexels) return pexels;
-      const pixabay = await fetchPixabay(pixabayKey, `${clean} city`);
+      // Try English city + "skyline" first — Pexels has many cityscape photos
+      const pexelsSkyline = await fetchPexels(pexelsKey, `${english} skyline`);
+      if (pexelsSkyline) return pexelsSkyline;
+      // Then English city + "cityscape"
+      const pexelsCity = await fetchPexels(pexelsKey, `${english} cityscape`);
+      if (pexelsCity) return pexelsCity;
+      // Then just English city
+      const pexelsName = await fetchPexels(pexelsKey, english);
+      if (pexelsName) return pexelsName;
+      // Try Pixabay with English name + "city"
+      const pixabay = await fetchPixabay(pixabayKey, `${english} city`);
       if (pixabay) return pixabay;
-      const tourismFr = await fetchWiki('fr', `Tourisme à ${clean}`);
-      if (tourismFr) return tourismFr;
-      const tourismEn = await fetchWiki('en', `Tourism in ${clean}`);
-      if (tourismEn) return tourismEn;
-      const fr = await fetchWiki('fr', clean);
-      if (fr) return fr;
-      const en = await fetchWiki('en', clean);
-      if (en) return en;
-      return loremFlickr(`${clean},city,landmark,travel`);
+      // Wiki — but skip "Tourisme à" / "Tourism in" pages because they return
+      // weird infobox first-images (maps, coats of arms). Use direct page only.
+      const wikiEn = await fetchWiki('en', english);
+      if (wikiEn && !/coat_of_arms|flag|map|svg/i.test(wikiEn)) return wikiEn;
+      // Final fallback: generic travel photo (always loads)
+      return REGION_FALLBACKS.default;
     });
   };
 

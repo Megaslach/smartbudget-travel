@@ -1,6 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { searchCities, Airport } from '../data/airports';
 import { searchWorldwideCities, findNearestAirport, estimateAirportTransport } from '../services/geoService';
+import { createImageFetcher } from '@smartbudget/shared';
+import { env } from '../config/env';
+
+const imageFetcher = createImageFetcher({
+  pexelsKey: env.PEXELS_KEY,
+  pixabayKey: env.PIXABAY_KEY,
+});
 
 const router = Router();
 
@@ -102,6 +109,23 @@ router.get('/airports/search', async (req: Request, res: Response): Promise<void
   }
 
   res.json({ airports: airports.slice(0, 10) });
+});
+
+/** Destination image proxy — uses server-side Pexels key for reliable photos. */
+router.get('/destinations/image', async (req: Request, res: Response): Promise<void> => {
+  const q = (req.query.q as string || '').trim();
+  if (!q) {
+    res.status(400).json({ error: 'q requis' });
+    return;
+  }
+  try {
+    const url = await imageFetcher.getDestinationImage(q);
+    // Cache for 24h on CDN/browser since image URLs are stable
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    res.json({ url });
+  } catch {
+    res.status(500).json({ error: 'Erreur image' });
+  }
 });
 
 /** Nearest-airport detail endpoint — used when the user picks a small city. */

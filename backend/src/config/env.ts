@@ -34,4 +34,6 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS || '',
   SMTP_FROM: process.env.SMTP_FROM || '',
   PRICE_ALERT_CRON: process.env.PRICE_ALERT_CRON || '0 8 * * *',
+  PEXELS_KEY: process.env.PEXELS_KEY || process.env.PEXELS_API_KEY || '',
+  PIXABAY_KEY: process.env.PIXABAY_KEY || process.env.PIXABAY_API_KEY || '',
 };

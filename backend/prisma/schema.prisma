@@ -32,6 +32,7 @@ model TripGroup {
   id           String              @id @default(uuid())
   name         String
   emoji        String              @default("🌍")
+  notes        String?             @db.Text
   ownerId      String
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -60,6 +61,7 @@ model GroupVote {
   groupSimulationId String
   userId            String
   vote              String          // 'up' | 'down'
+  comment           String?         @db.Text
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   groupSimulation   GroupSimulation @relation(fields: [groupSimulationId], references: [id], onDelete: Cascade)

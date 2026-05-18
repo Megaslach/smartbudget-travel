@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import {
-  createGroup, listGroups, getGroup,
+  createGroup, listGroups, getGroup, updateGroup,
   createGroupInvite, getGroupInviteInfo, acceptGroupInvite,
   leaveGroup, kickGroupMember,
   proposeGroupSimulation, removeGroupSimulation,
@@ -13,6 +13,7 @@ const router = Router();
 router.post('/groups',                authenticate, createGroup as any);
 router.get('/groups',                 authenticate, listGroups as any);
 router.get('/groups/:id',             authenticate, getGroup as any);
+router.patch('/groups/:id',           authenticate, updateGroup as any);
 router.post('/groups/:id/invite',     authenticate, createGroupInvite as any);
 router.delete('/groups/:id',          authenticate, leaveGroup as any);
 router.delete('/groups/:id/members/:userId', authenticate, kickGroupMember as any);

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Share2, LogOut, Image as ImageIcon, Copy,
   Plus, ThumbsUp, ThumbsDown, MapPin, Calendar, Users as UsersIcon, UserX, Trash2, X,
+  Crown, NotebookPen, MessageCircle, Save,
 } from 'lucide-react';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import Button from '@/components/atoms/Button';
@@ -33,13 +34,33 @@ export default function GroupDetailPage() {
   const [leaving, setLeaving] = useState(false);
   const [showProposeModal, setShowProposeModal] = useState(false);
   const [mySimulations, setMySimulations] = useState<Simulation[]>([]);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [voteCommentFor, setVoteCommentFor] = useState<{ proposalId: string; vote: 'up' | 'down' } | null>(null);
+  const [voteCommentText, setVoteCommentText] = useState('');
 
   const reload = async () => {
     if (!id) return;
     try {
       const { group } = await api.getGroup(id);
       setGroup(group as GroupDetail);
+      setNotesDraft((group as GroupDetail).notes || '');
     } catch {}
+  };
+
+  const handleSaveNotes = async () => {
+    if (!group) return;
+    if (notesDraft === (group.notes || '')) return;
+    setSavingNotes(true);
+    try {
+      await api.updateGroup(group.id, { notes: notesDraft });
+      toast.success('Notes enregistrées');
+      await reload();
+    } catch (e: any) {
+      toast.error(e?.error || 'Erreur');
+    } finally {
+      setSavingNotes(false);
+    }
   };
 
   useEffect(() => {
@@ -94,6 +115,18 @@ export default function GroupDetailPage() {
       } else {
         await api.voteOnGroupSimulation(group.id, proposalId, vote);
       }
+      await reload();
+    } catch (e: any) {
+      toast.error(e?.error || 'Erreur');
+    }
+  };
+
+  const handleVoteWithComment = async () => {
+    if (!group || !voteCommentFor) return;
+    try {
+      await api.voteOnGroupSimulation(group.id, voteCommentFor.proposalId, voteCommentFor.vote, voteCommentText.trim() || undefined);
+      setVoteCommentFor(null);
+      setVoteCommentText('');
       await reload();
     } catch (e: any) {
       toast.error(e?.error || 'Erreur');
@@ -183,6 +216,16 @@ export default function GroupDetailPage() {
 
   const proposals = group.simulations || [];
   const isOwner = group.myRole === 'owner';
+  // Winning proposal = highest (up - down) score, requires at least 1 up vote
+  const scored = proposals
+    .map((p) => ({
+      id: p.id,
+      score: p.votes.filter((v) => v.vote === 'up').length - p.votes.filter((v) => v.vote === 'down').length,
+      upCount: p.votes.filter((v) => v.vote === 'up').length,
+    }))
+    .filter((p) => p.upCount > 0)
+    .sort((a, b) => b.score - a.score);
+  const winnerId = scored.length > 0 && scored[0].score > 0 ? scored[0].id : null;
 
   return (
     <DashboardLayout title={`${group.emoji} ${group.name}`} description={`${group.members.length} membre${group.members.length > 1 ? 's' : ''} · ${proposals.length} proposition${proposals.length > 1 ? 's' : ''}`}>
@@ -245,14 +288,24 @@ export default function GroupDetailPage() {
               const myVote = p.votes.find((v) => v.userId === user?.id)?.vote as 'up' | 'down' | undefined;
               const upCount = p.votes.filter((v) => v.vote === 'up').length;
               const downCount = p.votes.filter((v) => v.vote === 'down').length;
+              const comments = p.votes.filter((v) => v.comment && v.comment.length > 0);
               const canRemove = isOwner || p.proposedBy === user?.id;
+              const isWinner = winnerId === p.id;
               return (
                 <motion.div
                   key={p.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                  className={`bg-white rounded-2xl shadow-sm overflow-hidden ${
+                    isWinner ? 'border-2 border-amber-300 ring-4 ring-amber-100' : 'border border-gray-100'
+                  }`}
                 >
+                  {isWinner && (
+                    <div className="bg-gradient-to-r from-amber-400 to-yellow-400 text-white px-5 py-2 flex items-center gap-2">
+                      <Crown className="h-4 w-4" />
+                      <p className="text-sm font-bold">Voyage gagnant — choix du groupe</p>
+                    </div>
+                  )}
                   <Link href={`/simulation?id=${p.simulationId}`} className="block p-5 hover:bg-sand-50 transition-colors">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -277,7 +330,25 @@ export default function GroupDetailPage() {
                     </div>
                   </Link>
 
-                  <div className="px-5 pb-4 pt-1 flex items-center gap-2 border-t border-gray-50">
+                  {comments.length > 0 && (
+                    <div className="px-5 py-3 border-t border-gray-50 bg-sand-50/50 space-y-2">
+                      {comments.map((c) => (
+                        <div key={c.id} className="flex items-start gap-2 text-xs">
+                          {c.vote === 'up' ? (
+                            <ThumbsUp className="h-3 w-3 text-emerald-500 mt-0.5 flex-shrink-0" />
+                          ) : (
+                            <ThumbsDown className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-700">{c.user.email}</p>
+                            <p className="text-gray-600 mt-0.5">{c.comment}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="px-5 pb-4 pt-3 flex items-center gap-2 border-t border-gray-50">
                     <button
                       onClick={() => handleVote(p.id, 'up', myVote)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
@@ -298,6 +369,13 @@ export default function GroupDetailPage() {
                     >
                       <ThumbsDown className="h-3.5 w-3.5" />{downCount}
                     </button>
+                    <button
+                      onClick={() => { setVoteCommentFor({ proposalId: p.id, vote: myVote || 'up' }); setVoteCommentText(''); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-sand-100 text-gray-600 hover:bg-sand-200 transition-colors"
+                      title="Voter avec un commentaire"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </button>
                     <div className="flex-1" />
                     {canRemove && (
                       <button
@@ -314,6 +392,25 @@ export default function GroupDetailPage() {
             })}
           </div>
         )}
+
+        {/* Shared notes */}
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1 flex items-center gap-2">
+          <NotebookPen className="h-3 w-3" />Notes partagées
+        </h2>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6">
+          <textarea
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            onBlur={handleSaveNotes}
+            placeholder="Ajoute des notes pour le groupe — choses à voir, bagages, idées d'activités, contacts utiles…"
+            rows={3}
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50 text-sm resize-none"
+          />
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-[11px] text-gray-400">Visible par tous les membres · enregistré quand tu quittes le champ</p>
+            {savingNotes && <span className="text-[11px] text-primary-600 flex items-center gap-1"><Save className="h-3 w-3" />Enregistrement…</span>}
+          </div>
+        </div>
 
         {/* Members */}
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Membres</h2>
@@ -343,19 +440,6 @@ export default function GroupDetailPage() {
           ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center opacity-70">
-            <ImageIcon className="h-8 w-8 text-primary-500 mx-auto mb-2" />
-            <p className="font-semibold text-gray-900 text-sm">Souvenirs partagés</p>
-            <p className="text-xs text-gray-400 mt-1 leading-relaxed">Bientôt : album commun pour les photos du voyage.</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center opacity-70">
-            <UsersIcon className="h-8 w-8 text-primary-500 mx-auto mb-2" />
-            <p className="font-semibold text-gray-900 text-sm">Chat de groupe</p>
-            <p className="text-xs text-gray-400 mt-1 leading-relaxed">Bientôt : discuter en temps réel dans le groupe.</p>
-          </div>
-        </div>
-
         <button
           onClick={handleLeave}
           disabled={leaving}
@@ -365,6 +449,54 @@ export default function GroupDetailPage() {
           {isOwner ? 'Supprimer le groupe' : 'Quitter le groupe'}
         </button>
       </div>
+
+      {/* Vote with comment modal */}
+      {voteCommentFor && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setVoteCommentFor(null)}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <h3 className="font-display text-lg font-bold text-gray-900 mb-4">Voter avec un commentaire</h3>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setVoteCommentFor((v) => v ? { ...v, vote: 'up' } : null)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-colors ${
+                    voteCommentFor.vote === 'up' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  <ThumbsUp className="h-4 w-4" />Pour
+                </button>
+                <button
+                  onClick={() => setVoteCommentFor((v) => v ? { ...v, vote: 'down' } : null)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-colors ${
+                    voteCommentFor.vote === 'down' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600'
+                  }`}
+                >
+                  <ThumbsDown className="h-4 w-4" />Contre
+                </button>
+              </div>
+              <textarea
+                value={voteCommentText}
+                onChange={(e) => setVoteCommentText(e.target.value)}
+                placeholder={voteCommentFor.vote === 'up' ? 'Pourquoi ce voyage te plaît ?' : 'Pourquoi pas celui-là ?'}
+                rows={3}
+                maxLength={500}
+                autoFocus
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50 text-sm resize-none"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">{voteCommentText.length}/500</p>
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" size="md" className="flex-1" onClick={() => setVoteCommentFor(null)}>Annuler</Button>
+                <Button variant="primary" size="md" className="flex-1" onClick={handleVoteWithComment}>Voter</Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Propose modal */}
       {showProposeModal && (

@@ -219,6 +219,7 @@ export interface TripGroup {
   id: string;
   name: string;
   emoji: string;
+  notes?: string | null;
   ownerId: string;
   createdAt: string;
   updatedAt: string;
@@ -231,6 +232,7 @@ export interface GroupVote {
   groupSimulationId: string;
   userId: string;
   vote: 'up' | 'down';
+  comment?: string | null;
   createdAt: string;
   user: { id: string; email: string };
 }
