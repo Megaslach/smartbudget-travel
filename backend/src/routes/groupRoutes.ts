@@ -6,6 +6,7 @@ import {
   leaveGroup, kickGroupMember,
   proposeGroupSimulation, removeGroupSimulation,
   voteOnGroupSimulation, removeVoteOnGroupSimulation,
+  voteOnGroupItem, removeVoteOnGroupItem,
 } from '../controllers/groupController';
 
 const router = Router();
@@ -25,6 +26,10 @@ router.delete('/groups/:id/proposals/:proposalId',     authenticate, removeGroup
 // Votes on proposals
 router.post('/groups/:id/proposals/:proposalId/vote',   authenticate, voteOnGroupSimulation as any);
 router.delete('/groups/:id/proposals/:proposalId/vote', authenticate, removeVoteOnGroupSimulation as any);
+
+// Per-item votes (hotel / activity / dates / flight inside a proposal)
+router.post('/groups/:id/proposals/:proposalId/items/vote',   authenticate, voteOnGroupItem as any);
+router.delete('/groups/:id/proposals/:proposalId/items/vote', authenticate, removeVoteOnGroupItem as any);
 
 router.get('/group-invite/:token',           getGroupInviteInfo as any);
 router.post('/group-invite/:token/accept', authenticate, acceptGroupInvite as any);

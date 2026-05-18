@@ -8,13 +8,14 @@ import {
   ArrowLeft, Share2, LogOut, Image as ImageIcon, Copy,
   Plus, ThumbsUp, ThumbsDown, MapPin, Calendar, Users as UsersIcon, UserX, Trash2, X,
   Crown, NotebookPen, MessageCircle, Save, TrendingDown, TrendingUp, Wallet,
+  ChevronDown, Hotel, Ticket, Plane, ExternalLink, Star,
 } from 'lucide-react';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import Button from '@/components/atoms/Button';
 import Loader from '@/components/atoms/Loader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import type { TripGroup, TripGroupMember, GroupSimulationProposal, Simulation } from '@/types';
+import type { TripGroup, TripGroupMember, GroupSimulationProposal, GroupItemVote, Simulation } from '@/types';
 import toast from 'react-hot-toast';
 
 type GroupDetail = TripGroup & {
@@ -38,6 +39,27 @@ export default function GroupDetailPage() {
   const [savingNotes, setSavingNotes] = useState(false);
   const [voteCommentFor, setVoteCommentFor] = useState<{ proposalId: string; vote: 'up' | 'down' } | null>(null);
   const [voteCommentText, setVoteCommentText] = useState('');
+  const [expandedProposalId, setExpandedProposalId] = useState<string | null>(null);
+
+  const handleItemVote = async (
+    proposalId: string,
+    itemType: 'hotel' | 'activity' | 'dates' | 'flight',
+    itemKey: string,
+    vote: 'up' | 'down',
+    currentVote?: 'up' | 'down',
+  ) => {
+    if (!group) return;
+    try {
+      if (currentVote === vote) {
+        await api.removeVoteOnGroupItem(group.id, proposalId, itemType, itemKey);
+      } else {
+        await api.voteOnGroupItem(group.id, proposalId, itemType, itemKey, vote);
+      }
+      await reload();
+    } catch (e: any) {
+      toast.error(e?.error || 'Erreur');
+    }
+  };
 
   const reload = async () => {
     if (!id) return;
@@ -332,6 +354,9 @@ export default function GroupDetailPage() {
               const comments = p.votes.filter((v) => v.comment && v.comment.length > 0);
               const canRemove = isOwner || p.proposedBy === user?.id;
               const isWinner = winnerId === p.id;
+              const isExpanded = expandedProposalId === p.id;
+              const perPerson = Math.round(p.simulation.budget / Math.max(1, p.simulation.people));
+              const bd = p.simulation.budgetData;
               return (
                 <motion.div
                   key={p.id}
@@ -347,7 +372,10 @@ export default function GroupDetailPage() {
                       <p className="text-sm font-bold">Voyage gagnant — choix du groupe</p>
                     </div>
                   )}
-                  <Link href={`/simulation?id=${p.simulationId}`} className="block p-5 hover:bg-sand-50 transition-colors">
+                  <button
+                    onClick={() => setExpandedProposalId(isExpanded ? null : p.id)}
+                    className="block w-full text-left p-5 hover:bg-sand-50 transition-colors"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -365,11 +393,22 @@ export default function GroupDetailPage() {
                         <p className="text-xs text-gray-400 mt-2">Proposé par {p.proposer.email}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-primary-700 text-lg">{Math.round(p.simulation.budget)}€</p>
+                        <p className="font-bold text-primary-700 text-lg">{Math.round(p.simulation.budget).toLocaleString()}€</p>
+                        <p className="text-xs font-semibold text-emerald-600">{perPerson.toLocaleString()}€ / pers</p>
                         <p className="text-[10px] text-gray-400">total estimé</p>
                       </div>
+                      <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
-                  </Link>
+                  </button>
+
+                  {isExpanded && bd && (
+                    <ProposalDetails
+                      proposal={p}
+                      budgetData={bd}
+                      currentUserId={user?.id || ''}
+                      onItemVote={handleItemVote}
+                    />
+                  )}
 
                   {comments.length > 0 && (
                     <div className="px-5 py-3 border-t border-gray-50 bg-sand-50/50 space-y-2">
@@ -599,5 +638,222 @@ export default function GroupDetailPage() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+// === Expandable proposal details with per-item voting ===
+function ProposalDetails({
+  proposal,
+  budgetData,
+  currentUserId,
+  onItemVote,
+}: {
+  proposal: GroupSimulationProposal;
+  budgetData: any;
+  currentUserId: string;
+  onItemVote: (
+    proposalId: string,
+    itemType: 'hotel' | 'activity' | 'dates' | 'flight',
+    itemKey: string,
+    vote: 'up' | 'down',
+    currentVote?: 'up' | 'down',
+  ) => void;
+}) {
+  const itemVotes = proposal.itemVotes || [];
+
+  const getVotesFor = (itemType: string, itemKey: string) => {
+    const filtered = itemVotes.filter((v) => v.itemType === itemType && v.itemKey === itemKey);
+    const up = filtered.filter((v) => v.vote === 'up').length;
+    const down = filtered.filter((v) => v.vote === 'down').length;
+    const mine = filtered.find((v) => v.userId === currentUserId)?.vote as 'up' | 'down' | undefined;
+    return { up, down, mine, all: filtered };
+  };
+
+  const dateKey = `${proposal.simulation.startDate}→${proposal.simulation.endDate}`;
+  const dateVotes = getVotesFor('dates', dateKey);
+
+  const hotels = budgetData?.accommodation?.options || [];
+  const activities = budgetData?.activities?.options || [];
+  const flightPrice = budgetData?.flights?.pricePerPerson ?? budgetData?.flights?.total ?? 0;
+
+  // Find best-voted item per category
+  const bestItem = (type: string, items: { name: string }[]) => {
+    let best: { key: string; score: number } | null = null;
+    for (const it of items) {
+      const v = getVotesFor(type, it.name);
+      const score = v.up - v.down;
+      if (v.up > 0 && (!best || score > best.score)) best = { key: it.name, score };
+    }
+    return best?.key;
+  };
+  const bestHotel = bestItem('hotel', hotels);
+  const bestActivity = bestItem('activity', activities);
+
+  return (
+    <div className="px-5 pb-5 pt-1 border-t border-gray-100 space-y-5">
+      {/* Vote on dates */}
+      <Section icon={Calendar} title="Dates du voyage">
+        <ItemRow
+          name={`${proposal.simulation.startDate} → ${proposal.simulation.endDate}`}
+          sub={`${proposal.simulation.duration} jours`}
+          votes={dateVotes}
+          onVote={(vote) => onItemVote(proposal.id, 'dates', dateKey, vote, dateVotes.mine)}
+        />
+      </Section>
+
+      {/* Flight summary */}
+      {flightPrice > 0 && (
+        <Section icon={Plane} title="Vols">
+          <ItemRow
+            name={`Vol AR depuis ${proposal.simulation.departureCity}`}
+            sub={`${Math.round(flightPrice).toLocaleString()}€ / pers`}
+            votes={getVotesFor('flight', 'main')}
+            onVote={(vote) => onItemVote(proposal.id, 'flight', 'main', vote, getVotesFor('flight', 'main').mine)}
+          />
+        </Section>
+      )}
+
+      {/* Hotels */}
+      {hotels.length > 0 && (
+        <Section icon={Hotel} title={`Hébergements (${hotels.length})`}>
+          {hotels.map((h: any, i: number) => {
+            const v = getVotesFor('hotel', h.name);
+            const isBest = bestHotel === h.name;
+            return (
+              <ItemRow
+                key={`${h.name}-${i}`}
+                name={h.name}
+                sub={`${h.type || 'Hôtel'} · ${Math.round(h.pricePerNight || 0)}€ / nuit${h.rating ? ` · ${h.rating}★` : ''}`}
+                bookingUrl={h.bookingUrl}
+                isBest={isBest}
+                votes={v}
+                onVote={(vote) => onItemVote(proposal.id, 'hotel', h.name, vote, v.mine)}
+              />
+            );
+          })}
+        </Section>
+      )}
+
+      {/* Activities */}
+      {activities.length > 0 && (
+        <Section icon={Ticket} title={`Activités (${activities.length})`}>
+          {activities.map((a: any, i: number) => {
+            const v = getVotesFor('activity', a.name);
+            const isBest = bestActivity === a.name;
+            return (
+              <ItemRow
+                key={`${a.name}-${i}`}
+                name={a.name}
+                sub={`${a.duration || ''}${a.duration && a.price ? ' · ' : ''}${a.price ? `${Math.round(a.price)}€` : ''}`}
+                bookingUrl={a.bookingUrl}
+                isBest={isBest}
+                votes={v}
+                onVote={(vote) => onItemVote(proposal.id, 'activity', a.name, vote, v.mine)}
+              />
+            );
+          })}
+        </Section>
+      )}
+
+      {/* Per-category breakdown */}
+      <Section icon={Wallet} title="Détail du budget">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          {budgetData?.flights && (
+            <div className="bg-sand-50 rounded-xl p-3">
+              <p className="text-gray-500">Vols</p>
+              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.flights.total || 0).toLocaleString()}€</p>
+            </div>
+          )}
+          {budgetData?.accommodation && (
+            <div className="bg-sand-50 rounded-xl p-3">
+              <p className="text-gray-500">Hébergement</p>
+              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.accommodation.total || 0).toLocaleString()}€</p>
+            </div>
+          )}
+          {typeof budgetData?.food === 'number' && (
+            <div className="bg-sand-50 rounded-xl p-3">
+              <p className="text-gray-500">Repas</p>
+              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.food).toLocaleString()}€</p>
+            </div>
+          )}
+          {budgetData?.activities && (
+            <div className="bg-sand-50 rounded-xl p-3">
+              <p className="text-gray-500">Activités</p>
+              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.activities.total || 0).toLocaleString()}€</p>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      <Link
+        href={`/simulation/${proposal.simulationId}`}
+        className="flex items-center justify-center gap-2 text-sm font-semibold text-primary-700 hover:text-primary-800 py-2"
+      >
+        Voir la simulation complète <ExternalLink className="h-3.5 w-3.5" />
+      </Link>
+    </div>
+  );
+}
+
+function Section({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+        <Icon className="h-3.5 w-3.5" />{title}
+      </h4>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function ItemRow({
+  name, sub, bookingUrl, isBest, votes, onVote,
+}: {
+  name: string;
+  sub?: string;
+  bookingUrl?: string;
+  isBest?: boolean;
+  votes: { up: number; down: number; mine?: 'up' | 'down' };
+  onVote: (vote: 'up' | 'down') => void;
+}) {
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-xl border ${isBest ? 'border-amber-300 bg-amber-50' : 'border-gray-100 bg-white'}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {isBest && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 flex-shrink-0" />}
+          <p className="font-semibold text-sm text-gray-900 truncate">{name}</p>
+          {bookingUrl && (
+            <a
+              href={bookingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[10px] font-bold text-primary-600 hover:underline flex items-center gap-0.5"
+            >
+              voir <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          )}
+        </div>
+        {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onVote('up')}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
+            votes.mine === 'up' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+          }`}
+        >
+          <ThumbsUp className="h-3 w-3" />{votes.up}
+        </button>
+        <button
+          onClick={() => onVote('down')}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
+            votes.mine === 'down' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'
+          }`}
+        >
+          <ThumbsDown className="h-3 w-3" />{votes.down}
+        </button>
+      </div>
+    </div>
   );
 }

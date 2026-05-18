@@ -237,6 +237,18 @@ export interface GroupVote {
   user: { id: string; email: string };
 }
 
+export interface GroupItemVote {
+  id: string;
+  groupSimulationId: string;
+  userId: string;
+  itemType: 'hotel' | 'activity' | 'dates' | 'flight';
+  itemKey: string;
+  vote: 'up' | 'down';
+  comment?: string | null;
+  createdAt: string;
+  user: { id: string; email: string };
+}
+
 export interface GroupSimulationProposal {
   id: string;
   groupId: string;
@@ -252,10 +264,12 @@ export interface GroupSimulationProposal {
     duration: number;
     people: number;
     budget: number;
+    budgetData?: BudgetEstimate | null;
     createdAt: string;
   };
   proposer: { id: string; email: string };
   votes: GroupVote[];
+  itemVotes: GroupItemVote[];
 }
 
 export interface TripProposal {

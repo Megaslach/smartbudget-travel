@@ -172,6 +172,30 @@ export class ApiClient {
   removeVoteOnGroupSimulation(id: string, proposalId: string): Promise<{ success: boolean }> {
     return this.request(`/groups/${id}/proposals/${proposalId}/vote`, { method: 'DELETE' });
   }
+  voteOnGroupItem(
+    id: string,
+    proposalId: string,
+    itemType: 'hotel' | 'activity' | 'dates' | 'flight',
+    itemKey: string,
+    vote: 'up' | 'down',
+    comment?: string,
+  ): Promise<{ vote: any }> {
+    return this.request(`/groups/${id}/proposals/${proposalId}/items/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ itemType, itemKey, vote, comment }),
+    });
+  }
+  removeVoteOnGroupItem(
+    id: string,
+    proposalId: string,
+    itemType: 'hotel' | 'activity' | 'dates' | 'flight',
+    itemKey: string,
+  ): Promise<{ success: boolean }> {
+    return this.request(`/groups/${id}/proposals/${proposalId}/items/vote`, {
+      method: 'DELETE',
+      body: JSON.stringify({ itemType, itemKey }),
+    });
+  }
 
   // Trip proposals (budget-first discovery)
   proposeTrips(data: {

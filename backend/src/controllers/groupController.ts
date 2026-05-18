@@ -3,6 +3,11 @@ import crypto from 'crypto';
 import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/prisma';
 
+const safeParse = (s: string | null): any => {
+  if (!s) return null;
+  try { return JSON.parse(s); } catch { return null; }
+};
+
 /** Create a new trip group (the owner is automatically a member). */
 export const createGroup = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -80,18 +85,31 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
               select: {
                 id: true, destination: true, departureCity: true,
                 startDate: true, endDate: true, duration: true,
-                people: true, budget: true, createdAt: true,
+                people: true, budget: true, budgetData: true, createdAt: true,
               },
             },
             proposer: { select: { id: true, email: true } },
             votes: { include: { user: { select: { id: true, email: true } } } },
+            itemVotes: { include: { user: { select: { id: true, email: true } } } },
           },
           orderBy: { createdAt: 'desc' },
         },
       },
     });
 
-    res.json({ group: { ...group, myRole: member.role } });
+    // Parse budgetData JSON for each proposal
+    const enriched = {
+      ...group,
+      simulations: (group?.simulations || []).map((s) => ({
+        ...s,
+        simulation: {
+          ...s.simulation,
+          budgetData: s.simulation.budgetData ? safeParse(s.simulation.budgetData) : null,
+        },
+      })),
+    };
+
+    res.json({ group: { ...enriched, myRole: member.role } });
   } catch (error) {
     console.error('GetGroup error:', error);
     res.status(500).json({ error: 'Erreur' });
@@ -248,6 +266,89 @@ export const voteOnGroupSimulation = async (req: AuthRequest, res: Response): Pr
     res.json({ vote: saved });
   } catch (error) {
     console.error('VoteOnGroupSimulation error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Vote on a specific item inside a proposal (hotel / activity / dates / flight). */
+export const voteOnGroupItem = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id, proposalId } = req.params;
+    const { itemType, itemKey, vote, comment } = req.body as {
+      itemType?: string; itemKey?: string; vote?: 'up' | 'down'; comment?: string;
+    };
+    if (!itemType || !itemKey) {
+      res.status(400).json({ error: 'itemType et itemKey requis' });
+      return;
+    }
+    if (vote !== 'up' && vote !== 'down') {
+      res.status(400).json({ error: 'vote doit être "up" ou "down"' });
+      return;
+    }
+
+    const member = await prisma.tripGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: req.userId! } },
+    });
+    if (!member) {
+      res.status(404).json({ error: 'Groupe non trouvé' });
+      return;
+    }
+
+    const proposal = await prisma.groupSimulation.findUnique({ where: { id: proposalId } });
+    if (!proposal || proposal.groupId !== id) {
+      res.status(404).json({ error: 'Proposition non trouvée' });
+      return;
+    }
+
+    const trimmed = typeof comment === 'string' ? comment.trim().slice(0, 500) : '';
+    const saved = await prisma.groupItemVote.upsert({
+      where: {
+        groupSimulationId_userId_itemType_itemKey: {
+          groupSimulationId: proposalId,
+          userId: req.userId!,
+          itemType,
+          itemKey,
+        },
+      },
+      update: { vote, comment: trimmed || null },
+      create: {
+        groupSimulationId: proposalId,
+        userId: req.userId!,
+        itemType,
+        itemKey,
+        vote,
+        comment: trimmed || null,
+      },
+    });
+    res.json({ vote: saved });
+  } catch (error) {
+    console.error('VoteOnGroupItem error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Remove the current user's vote on a specific item. */
+export const removeVoteOnGroupItem = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { proposalId } = req.params;
+    const { itemType, itemKey } = req.body as { itemType?: string; itemKey?: string };
+    if (!itemType || !itemKey) {
+      res.status(400).json({ error: 'itemType et itemKey requis' });
+      return;
+    }
+    await prisma.groupItemVote.delete({
+      where: {
+        groupSimulationId_userId_itemType_itemKey: {
+          groupSimulationId: proposalId,
+          userId: req.userId!,
+          itemType,
+          itemKey,
+        },
+      },
+    }).catch(() => {});
+    res.json({ success: true });
+  } catch (error) {
+    console.error('RemoveVoteOnGroupItem error:', error);
     res.status(500).json({ error: 'Erreur' });
   }
 };
