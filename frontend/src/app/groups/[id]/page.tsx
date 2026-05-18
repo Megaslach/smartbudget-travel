@@ -8,14 +8,17 @@ import {
   ArrowLeft, Share2, LogOut, Image as ImageIcon, Copy,
   Plus, ThumbsUp, ThumbsDown, MapPin, Calendar, Users as UsersIcon, UserX, Trash2, X,
   Crown, NotebookPen, MessageCircle, Save, TrendingDown, TrendingUp, Wallet,
-  ChevronDown, Hotel, Ticket, Plane, ExternalLink, Star,
+  ChevronDown,
 } from 'lucide-react';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import Button from '@/components/atoms/Button';
 import Loader from '@/components/atoms/Loader';
+import BudgetResultCard from '@/components/molecules/BudgetResultCard';
+import AiTipsCard from '@/components/molecules/AiTipsCard';
+import ItineraryCard from '@/components/molecules/ItineraryCard';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import type { TripGroup, TripGroupMember, GroupSimulationProposal, GroupItemVote, Simulation } from '@/types';
+import type { TripGroup, TripGroupMember, GroupSimulationProposal, Simulation } from '@/types';
 import toast from 'react-hot-toast';
 
 type GroupDetail = TripGroup & {
@@ -40,26 +43,6 @@ export default function GroupDetailPage() {
   const [voteCommentFor, setVoteCommentFor] = useState<{ proposalId: string; vote: 'up' | 'down' } | null>(null);
   const [voteCommentText, setVoteCommentText] = useState('');
   const [expandedProposalId, setExpandedProposalId] = useState<string | null>(null);
-
-  const handleItemVote = async (
-    proposalId: string,
-    itemType: 'hotel' | 'activity' | 'dates' | 'flight',
-    itemKey: string,
-    vote: 'up' | 'down',
-    currentVote?: 'up' | 'down',
-  ) => {
-    if (!group) return;
-    try {
-      if (currentVote === vote) {
-        await api.removeVoteOnGroupItem(group.id, proposalId, itemType, itemKey);
-      } else {
-        await api.voteOnGroupItem(group.id, proposalId, itemType, itemKey, vote);
-      }
-      await reload();
-    } catch (e: any) {
-      toast.error(e?.error || 'Erreur');
-    }
-  };
 
   const reload = async () => {
     if (!id) return;
@@ -401,13 +384,32 @@ export default function GroupDetailPage() {
                     </div>
                   </button>
 
-                  {isExpanded && bd && (
-                    <ProposalDetails
-                      proposal={p}
-                      budgetData={bd}
-                      currentUserId={user?.id || ''}
-                      onItemVote={handleItemVote}
-                    />
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 p-5 space-y-4 bg-sand-50/40">
+                      {bd ? (
+                        <>
+                          <BudgetResultCard
+                            budget={bd}
+                            destination={p.simulation.destination}
+                            duration={p.simulation.duration}
+                            people={p.simulation.people}
+                          />
+                          {(p.simulation as any).aiTips && (
+                            <AiTipsCard tips={(p.simulation as any).aiTips} />
+                          )}
+                          {(p.simulation as any).itinerary && (
+                            <ItineraryCard
+                              itinerary={(p.simulation as any).itinerary}
+                              destination={p.simulation.destination}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-gray-500 text-center py-8">
+                          Détails de la simulation non disponibles.
+                        </p>
+                      )}
+                    </div>
                   )}
 
                   {comments.length > 0 && (
@@ -641,219 +643,3 @@ export default function GroupDetailPage() {
   );
 }
 
-// === Expandable proposal details with per-item voting ===
-function ProposalDetails({
-  proposal,
-  budgetData,
-  currentUserId,
-  onItemVote,
-}: {
-  proposal: GroupSimulationProposal;
-  budgetData: any;
-  currentUserId: string;
-  onItemVote: (
-    proposalId: string,
-    itemType: 'hotel' | 'activity' | 'dates' | 'flight',
-    itemKey: string,
-    vote: 'up' | 'down',
-    currentVote?: 'up' | 'down',
-  ) => void;
-}) {
-  const itemVotes = proposal.itemVotes || [];
-
-  const getVotesFor = (itemType: string, itemKey: string) => {
-    const filtered = itemVotes.filter((v) => v.itemType === itemType && v.itemKey === itemKey);
-    const up = filtered.filter((v) => v.vote === 'up').length;
-    const down = filtered.filter((v) => v.vote === 'down').length;
-    const mine = filtered.find((v) => v.userId === currentUserId)?.vote as 'up' | 'down' | undefined;
-    return { up, down, mine, all: filtered };
-  };
-
-  const dateKey = `${proposal.simulation.startDate}→${proposal.simulation.endDate}`;
-  const dateVotes = getVotesFor('dates', dateKey);
-
-  const hotels = budgetData?.accommodation?.options || [];
-  const activities = budgetData?.activities?.options || [];
-  const flightPrice = budgetData?.flights?.pricePerPerson ?? budgetData?.flights?.total ?? 0;
-
-  // Find best-voted item per category
-  const bestItem = (type: string, items: { name: string }[]) => {
-    let best: { key: string; score: number } | null = null;
-    for (const it of items) {
-      const v = getVotesFor(type, it.name);
-      const score = v.up - v.down;
-      if (v.up > 0 && (!best || score > best.score)) best = { key: it.name, score };
-    }
-    return best?.key;
-  };
-  const bestHotel = bestItem('hotel', hotels);
-  const bestActivity = bestItem('activity', activities);
-
-  return (
-    <div className="px-5 pb-5 pt-1 border-t border-gray-100 space-y-5">
-      {/* Vote on dates */}
-      <Section icon={Calendar} title="Dates du voyage">
-        <ItemRow
-          name={`${proposal.simulation.startDate} → ${proposal.simulation.endDate}`}
-          sub={`${proposal.simulation.duration} jours`}
-          votes={dateVotes}
-          onVote={(vote) => onItemVote(proposal.id, 'dates', dateKey, vote, dateVotes.mine)}
-        />
-      </Section>
-
-      {/* Flight summary */}
-      {flightPrice > 0 && (
-        <Section icon={Plane} title="Vols">
-          <ItemRow
-            name={`Vol AR depuis ${proposal.simulation.departureCity}`}
-            sub={`${Math.round(flightPrice).toLocaleString()}€ / pers`}
-            votes={getVotesFor('flight', 'main')}
-            onVote={(vote) => onItemVote(proposal.id, 'flight', 'main', vote, getVotesFor('flight', 'main').mine)}
-          />
-        </Section>
-      )}
-
-      {/* Hotels */}
-      {hotels.length > 0 && (
-        <Section icon={Hotel} title={`Hébergements (${hotels.length})`}>
-          {hotels.map((h: any, i: number) => {
-            const v = getVotesFor('hotel', h.name);
-            const isBest = bestHotel === h.name;
-            return (
-              <ItemRow
-                key={`${h.name}-${i}`}
-                name={h.name}
-                sub={`${h.type || 'Hôtel'} · ${Math.round(h.pricePerNight || 0)}€ / nuit${h.rating ? ` · ${h.rating}★` : ''}`}
-                bookingUrl={h.bookingUrl}
-                isBest={isBest}
-                votes={v}
-                onVote={(vote) => onItemVote(proposal.id, 'hotel', h.name, vote, v.mine)}
-              />
-            );
-          })}
-        </Section>
-      )}
-
-      {/* Activities */}
-      {activities.length > 0 && (
-        <Section icon={Ticket} title={`Activités (${activities.length})`}>
-          {activities.map((a: any, i: number) => {
-            const v = getVotesFor('activity', a.name);
-            const isBest = bestActivity === a.name;
-            return (
-              <ItemRow
-                key={`${a.name}-${i}`}
-                name={a.name}
-                sub={`${a.duration || ''}${a.duration && a.price ? ' · ' : ''}${a.price ? `${Math.round(a.price)}€` : ''}`}
-                bookingUrl={a.bookingUrl}
-                isBest={isBest}
-                votes={v}
-                onVote={(vote) => onItemVote(proposal.id, 'activity', a.name, vote, v.mine)}
-              />
-            );
-          })}
-        </Section>
-      )}
-
-      {/* Per-category breakdown */}
-      <Section icon={Wallet} title="Détail du budget">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          {budgetData?.flights && (
-            <div className="bg-sand-50 rounded-xl p-3">
-              <p className="text-gray-500">Vols</p>
-              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.flights.total || 0).toLocaleString()}€</p>
-            </div>
-          )}
-          {budgetData?.accommodation && (
-            <div className="bg-sand-50 rounded-xl p-3">
-              <p className="text-gray-500">Hébergement</p>
-              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.accommodation.total || 0).toLocaleString()}€</p>
-            </div>
-          )}
-          {typeof budgetData?.food === 'number' && (
-            <div className="bg-sand-50 rounded-xl p-3">
-              <p className="text-gray-500">Repas</p>
-              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.food).toLocaleString()}€</p>
-            </div>
-          )}
-          {budgetData?.activities && (
-            <div className="bg-sand-50 rounded-xl p-3">
-              <p className="text-gray-500">Activités</p>
-              <p className="font-bold text-gray-900 mt-1">{Math.round(budgetData.activities.total || 0).toLocaleString()}€</p>
-            </div>
-          )}
-        </div>
-      </Section>
-
-      <Link
-        href={`/simulation/${proposal.simulationId}`}
-        className="flex items-center justify-center gap-2 text-sm font-semibold text-primary-700 hover:text-primary-800 py-2"
-      >
-        Voir la simulation complète <ExternalLink className="h-3.5 w-3.5" />
-      </Link>
-    </div>
-  );
-}
-
-function Section({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-        <Icon className="h-3.5 w-3.5" />{title}
-      </h4>
-      <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function ItemRow({
-  name, sub, bookingUrl, isBest, votes, onVote,
-}: {
-  name: string;
-  sub?: string;
-  bookingUrl?: string;
-  isBest?: boolean;
-  votes: { up: number; down: number; mine?: 'up' | 'down' };
-  onVote: (vote: 'up' | 'down') => void;
-}) {
-  return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl border ${isBest ? 'border-amber-300 bg-amber-50' : 'border-gray-100 bg-white'}`}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          {isBest && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 flex-shrink-0" />}
-          <p className="font-semibold text-sm text-gray-900 truncate">{name}</p>
-          {bookingUrl && (
-            <a
-              href={bookingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-[10px] font-bold text-primary-600 hover:underline flex items-center gap-0.5"
-            >
-              voir <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-          )}
-        </div>
-        {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
-      </div>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onVote('up')}
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
-            votes.mine === 'up' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-          }`}
-        >
-          <ThumbsUp className="h-3 w-3" />{votes.up}
-        </button>
-        <button
-          onClick={() => onVote('down')}
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
-            votes.mine === 'down' ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'
-          }`}
-        >
-          <ThumbsDown className="h-3 w-3" />{votes.down}
-        </button>
-      </div>
-    </div>
-  );
-}

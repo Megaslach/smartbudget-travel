@@ -85,7 +85,8 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
               select: {
                 id: true, destination: true, departureCity: true,
                 startDate: true, endDate: true, duration: true,
-                people: true, budget: true, budgetData: true, createdAt: true,
+                people: true, budget: true, budgetData: true,
+                aiTips: true, itinerary: true, createdAt: true,
               },
             },
             proposer: { select: { id: true, email: true } },
@@ -97,7 +98,7 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
       },
     });
 
-    // Parse budgetData JSON for each proposal
+    // Parse JSON fields for each proposal so the frontend gets ready-to-use objects
     const enriched = {
       ...group,
       simulations: (group?.simulations || []).map((s) => ({
@@ -105,6 +106,8 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
         simulation: {
           ...s.simulation,
           budgetData: s.simulation.budgetData ? safeParse(s.simulation.budgetData) : null,
+          aiTips: s.simulation.aiTips ? safeParse(s.simulation.aiTips) : null,
+          itinerary: s.simulation.itinerary ? safeParse(s.simulation.itinerary) : null,
         },
       })),
     };
