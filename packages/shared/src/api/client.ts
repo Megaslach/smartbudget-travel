@@ -119,7 +119,7 @@ export class ApiClient {
   }
 
   /** Refresh hotel/activity list, keeping pinned items (by name). */
-  regenerateOptions(simulationId: string, category: 'hotels' | 'activities', keepNames: string[]): Promise<{ simulation: Simulation }> {
+  regenerateOptions(simulationId: string, category: 'hotels' | 'activities' | 'flights', keepNames: string[] = []): Promise<{ simulation: Simulation }> {
     return this.request(`/simulation/${simulationId}/regenerate`, {
       method: 'POST',
       body: JSON.stringify({ category, keepNames }),

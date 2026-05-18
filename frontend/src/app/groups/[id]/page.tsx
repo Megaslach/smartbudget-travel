@@ -8,7 +8,7 @@ import {
   ArrowLeft, Share2, LogOut, Image as ImageIcon, Copy,
   Plus, ThumbsUp, ThumbsDown, MapPin, Calendar, Users as UsersIcon, UserX, Trash2, X,
   Crown, NotebookPen, MessageCircle, Save, TrendingDown, TrendingUp, Wallet,
-  ChevronDown,
+  ChevronDown, RefreshCw, Plane, Hotel, Ticket,
 } from 'lucide-react';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import Button from '@/components/atoms/Button';
@@ -43,6 +43,30 @@ export default function GroupDetailPage() {
   const [voteCommentFor, setVoteCommentFor] = useState<{ proposalId: string; vote: 'up' | 'down' } | null>(null);
   const [voteCommentText, setVoteCommentText] = useState('');
   const [expandedProposalId, setExpandedProposalId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<{ proposalId: string; category: 'flights' | 'hotels' | 'activities' } | null>(null);
+
+  const handleRefreshSection = async (
+    proposalId: string,
+    simulationId: string,
+    category: 'flights' | 'hotels' | 'activities',
+    keepNames: string[] = [],
+  ) => {
+    if (!group) return;
+    setRefreshing({ proposalId, category });
+    try {
+      await api.regenerateOptions(simulationId, category, keepNames);
+      toast.success(
+        category === 'flights' ? 'Vols mis à jour'
+          : category === 'hotels' ? 'Hôtels mis à jour'
+          : 'Activités mises à jour'
+      );
+      await reload();
+    } catch (e: any) {
+      toast.error(e?.error || 'Erreur de rafraîchissement');
+    } finally {
+      setRefreshing(null);
+    }
+  };
 
   const reload = async () => {
     if (!id) return;
@@ -388,6 +412,39 @@ export default function GroupDetailPage() {
                     <div className="border-t border-gray-100 p-5 space-y-4 bg-sand-50/40">
                       {bd ? (
                         <>
+                          {/* Section refresh toolbar */}
+                          <div className="bg-white rounded-xl border border-gray-100 p-3 flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold text-gray-500 mr-2">Rafraîchir :</span>
+                            {(['flights', 'hotels', 'activities'] as const).map((cat) => {
+                              const isLoading = refreshing?.proposalId === p.id && refreshing.category === cat;
+                              const meta = {
+                                flights: { icon: Plane, label: 'Vols' },
+                                hotels: { icon: Hotel, label: 'Hôtels' },
+                                activities: { icon: Ticket, label: 'Activités' },
+                              }[cat];
+                              const Icon = meta.icon;
+                              return (
+                                <button
+                                  key={cat}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRefreshSection(p.id, p.simulationId, cat);
+                                  }}
+                                  disabled={!!refreshing}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sand-50 text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition-colors disabled:opacity-50 border border-gray-200"
+                                >
+                                  {isLoading ? (
+                                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Icon className="h-3.5 w-3.5" />
+                                  )}
+                                  {meta.label}
+                                </button>
+                              );
+                            })}
+                            <span className="text-[10px] text-gray-400 ml-2">Récupère les prix réels en direct</span>
+                          </div>
+
                           <BudgetResultCard
                             budget={bd}
                             destination={p.simulation.destination}

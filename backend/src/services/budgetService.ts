@@ -216,7 +216,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
-async function searchFlightsCascade(input: SimulationInput): Promise<{
+export async function searchFlightsCascade(input: SimulationInput): Promise<{
   flights: Array<SerpApiFlightOffer | AmadeusFlightOffer | KiwiFlightOffer | RealFlightOffer> | null;
   source: 'serpapi' | 'amadeus' | 'kiwi' | 'skyscanner' | null;
   originCode: string;
@@ -249,7 +249,7 @@ async function searchFlightsCascade(input: SimulationInput): Promise<{
   return { flights: null, source: null, originCode: '', destCode: '' };
 }
 
-async function searchHotelsCascade(input: SimulationInput): Promise<{
+export async function searchHotelsCascade(input: SimulationInput): Promise<{
   hotels: Array<SerpApiHotelOffer | AmadeusHotelOffer | HotellookHotelOffer | RealHotelOffer> | null;
   source: 'serpapi' | 'amadeus' | 'hotellook' | 'skyscanner' | null;
 }> {

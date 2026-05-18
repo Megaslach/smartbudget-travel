@@ -29,6 +29,10 @@ function SimulationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialDestination = searchParams.get('destination') ?? undefined;
+  const initialDeparture = searchParams.get('departure') ?? undefined;
+  const initialStartDate = searchParams.get('start') ?? undefined;
+  const initialEndDate = searchParams.get('end') ?? undefined;
+  const initialPeople = searchParams.get('people') ?? undefined;
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
@@ -74,7 +78,15 @@ function SimulationContent() {
     <DashboardLayout title="Simulation de budget" description="Estimez le coût de votre prochain voyage">
       <SimulationLoadingOverlay open={isSimulating} />
       <div className="max-w-2xl mx-auto space-y-10">
-        <SimulationForm onSubmit={handleSimulate} isLoading={isSimulating} initialDestination={initialDestination} />
+        <SimulationForm
+          onSubmit={handleSimulate}
+          isLoading={isSimulating}
+          initialDestination={initialDestination}
+          initialDeparture={initialDeparture}
+          initialStartDate={initialStartDate}
+          initialEndDate={initialEndDate}
+          initialPeople={initialPeople}
+        />
         {result && (
           <ResultsSection
             simulationId={result.id}

@@ -1,4 +1,4 @@
-// Refresh + pin: regenerate activities or hotels for a simulation,
+// Refresh + pin: regenerate activities, hotels or flights for a simulation,
 // excluding items the user wanted to keep (pinned).
 // The kept items are merged back into the result so they stay visible.
 
@@ -10,8 +10,9 @@ import { resolveActivityImages } from '../services/imageResolverService';
 import { withAffiliate } from '../config/affiliates';
 import { buildActivityBookingUrl, buildHotelBookingUrl } from '../services/bookingUrlService';
 import { getRealActivities } from '../services/realActivitiesService';
+import { searchFlightsCascade, searchHotelsCascade } from '../services/budgetService';
 
-type Category = 'activities' | 'hotels';
+type Category = 'activities' | 'hotels' | 'flights';
 
 interface RegenerateBody {
   category: Category;
@@ -23,15 +24,28 @@ export const regenerate = async (req: AuthRequest, res: Response): Promise<void>
     const { id } = req.params;
     const { category, keepNames = [] } = req.body as RegenerateBody;
 
-    if (category !== 'activities' && category !== 'hotels') {
-      res.status(400).json({ error: 'category invalide (activities | hotels)' });
+    if (category !== 'activities' && category !== 'hotels' && category !== 'flights') {
+      res.status(400).json({ error: 'category invalide (activities | hotels | flights)' });
       return;
     }
 
     const sim = await prisma.simulation.findUnique({ where: { id } });
-    if (!sim || sim.userId !== req.userId) {
+    if (!sim) {
       res.status(404).json({ error: 'Simulation non trouvée' });
       return;
+    }
+    // Allow either the owner OR any member of a group this simulation is proposed in
+    if (sim.userId !== req.userId) {
+      const groupAccess = await prisma.groupSimulation.findFirst({
+        where: {
+          simulationId: id,
+          group: { members: { some: { userId: req.userId! } } },
+        },
+      });
+      if (!groupAccess) {
+        res.status(404).json({ error: 'Simulation non trouvée' });
+        return;
+      }
     }
 
     const budget = sim.budgetData ? JSON.parse(sim.budgetData) : null;
@@ -116,15 +130,100 @@ Varie les gammes et les quartiers. Pas de doublons.`;
         bookingUrl: withAffiliate(buildHotelBookingUrl(h.name, sim.destination)),
       }));
 
-      const withImages = await resolveActivityImages(newOpts, sim.destination);
-      const merged = [...kept, ...withImages];
+      // Try REAL hotels first (SerpAPI → Hotellook → Amadeus → Skyscanner)
+      let realMerged: any[] | null = null;
+      try {
+        const real = await searchHotelsCascade({
+          destination: sim.destination,
+          departureCity: sim.departureCity,
+          startDate: sim.startDate,
+          endDate: sim.endDate,
+          duration: sim.duration,
+          people: sim.people,
+        });
+        if (real.hotels && real.hotels.length > 0) {
+          const filtered = real.hotels
+            .filter((h: any) => !keepNames.includes(h.name))
+            .slice(0, Math.max(3, 6 - kept.length))
+            .map((h: any) => ({
+              name: h.name,
+              type: h.type || 'Hôtel',
+              pricePerNight: Math.round(h.pricePerNight || h.price || 80),
+              rating: h.rating || 4,
+              bookingUrl: h.bookingUrl || withAffiliate(buildHotelBookingUrl(h.name, sim.destination)),
+              imageUrl: h.imageUrl,
+              isRealData: true,
+              source: real.source,
+            }));
+          if (filtered.length > 0) {
+            const withImg = await resolveActivityImages(filtered, sim.destination);
+            realMerged = [...kept, ...withImg];
+          }
+        }
+      } catch (e) {
+        console.error('Real hotels regenerate failed, falling back to AI:', e);
+      }
 
-      budget.accommodation = { ...budget.accommodation, options: merged };
+      if (realMerged) {
+        budget.accommodation = { ...budget.accommodation, options: realMerged, isRealData: true };
+      } else {
+        const withImages = await resolveActivityImages(newOpts, sim.destination);
+        const merged = [...kept, ...withImages];
+        budget.accommodation = { ...budget.accommodation, options: merged };
+      }
+    } else if (category === 'flights') {
+      // Refresh flights via the real cascade (SerpAPI → Amadeus → Kiwi → Skyscanner)
+      const real = await searchFlightsCascade({
+        destination: sim.destination,
+        departureCity: sim.departureCity,
+        startDate: sim.startDate,
+        endDate: sim.endDate,
+        duration: sim.duration,
+        people: sim.people,
+      });
+
+      if (real.flights && real.flights.length > 0) {
+        const avgPrice = Math.round(real.flights.reduce((s, f: any) => s + (f.price || 0), 0) / real.flights.length);
+        const totalCost = avgPrice * sim.people;
+        const offers = real.flights.slice(0, 6).map((f: any) => ({
+          airline: f.airline,
+          airlineName: f.airlineName || f.airline,
+          price: Math.round(f.price),
+          duration: f.duration,
+          stops: f.stops || 0,
+          departureAt: f.departureAt,
+          arrivalAt: f.arrivalAt,
+          returnDepartureAt: f.returnDepartureAt,
+          returnArrivalAt: f.returnArrivalAt,
+          bookingUrl: f.bookingUrl,
+        }));
+        budget.flights = {
+          ...budget.flights,
+          avgPrice,
+          total: totalCost,
+          isRealData: true,
+          source: `${real.source} — Prix réels`,
+          offers,
+        };
+      } else {
+        res.status(503).json({ error: 'Aucun vol réel trouvé — réessaie dans quelques minutes' });
+        return;
+      }
     }
+
+    // Recompute total so the proposal card stays in sync after a section refresh
+    const flightTotal = (budget.flights?.avgPrice || 0) * sim.people;
+    const accomTotal = budget.accommodation?.total || 0;
+    const activitiesTotal = typeof budget.activities === 'object'
+      ? (budget.activities.total || 0)
+      : (budget.activities || 0);
+    const foodTotal = budget.food || 0;
+    const transportTotal = budget.transport || 0;
+    budget.total = Math.round(flightTotal + accomTotal + activitiesTotal + foodTotal + transportTotal);
 
     const updated = await prisma.simulation.update({
       where: { id },
-      data: { budgetData: JSON.stringify(budget) },
+      data: { budgetData: JSON.stringify(budget), budget: budget.total },
     });
 
     res.json({

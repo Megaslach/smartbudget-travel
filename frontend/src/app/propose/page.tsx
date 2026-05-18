@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Users, MapPin, Calendar, Sparkles, Plane, Hotel,
-  Utensils, Ticket, Bus, AlertCircle, CheckCircle2, Lightbulb,
+  Utensils, Ticket, Bus, AlertCircle, CheckCircle2, Lightbulb, PlaneTakeoff,
 } from 'lucide-react';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import Button from '@/components/atoms/Button';
@@ -23,11 +23,14 @@ export default function ProposePage() {
   const [budgetTotal, setBudgetTotal] = useState('1500');
   const [people, setPeople] = useState('2');
   const [destination, setDestination] = useState('');
+  const [departureCity, setDepartureCity] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [durationDays, setDurationDays] = useState('7');
   const [usePerPerson, setUsePerPerson] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [depAirports, setDepAirports] = useState<{ city: string; country: string; emoji: string; code: string; airportName: string }[]>([]);
+  const [depShow, setDepShow] = useState(false);
   const [result, setResult] = useState<{
     proposals: TripProposal[];
     feasibility?: 'ok' | 'tight' | 'impossible';
@@ -38,6 +41,16 @@ export default function ProposePage() {
   useEffect(() => {
     if (!authLoading && !user) router.push('/login');
   }, [user, authLoading, router]);
+
+  const searchDeparture = async (q: string) => {
+    setDepartureCity(q);
+    if (q.length < 1) { setDepAirports([]); setDepShow(false); return; }
+    try {
+      const r = await api.searchAirports(q);
+      setDepAirports(r.airports);
+      setDepShow(r.airports.length > 0);
+    } catch { setDepAirports([]); }
+  };
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -54,6 +67,7 @@ export default function ProposePage() {
         ...(usePerPerson ? { budgetPerPerson: budget } : { budgetTotal: budget }),
         people: peopleNum,
         destination: destination.trim() || undefined,
+        departureCity: departureCity.trim() || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         durationDays: !startDate && !endDate ? parseInt(durationDays) || undefined : undefined,
@@ -67,6 +81,17 @@ export default function ProposePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Build URL params for "Simuler ce voyage" — pre-fills the simulation form
+  const buildSimulationUrl = (destinationName: string) => {
+    const p = new URLSearchParams();
+    p.set('destination', destinationName);
+    if (departureCity.trim()) p.set('departure', departureCity.trim());
+    if (startDate) p.set('start', startDate);
+    if (endDate) p.set('end', endDate);
+    if (people) p.set('people', people);
+    return `/simulation?${p.toString()}`;
   };
 
   if (authLoading || !user) {
@@ -142,6 +167,48 @@ export default function ProposePage() {
             <p className="text-xs uppercase tracking-wider font-semibold text-gray-400">
               Filtres optionnels — plus tu en mets, plus la recherche se précise
             </p>
+
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <PlaneTakeoff className="inline h-4 w-4 mr-1 text-primary-500" />Ville de départ
+                <span className="ml-1 text-[10px] text-gray-400">(pour des prix précis)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Paris, Lyon, Marseille…"
+                value={departureCity}
+                onChange={(e) => searchDeparture(e.target.value)}
+                onFocus={() => depAirports.length > 0 && setDepShow(true)}
+                onBlur={() => setTimeout(() => setDepShow(false), 200)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50"
+              />
+              <AnimatePresence>
+                {depShow && depAirports.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute z-50 top-full mt-1 w-full bg-white rounded-xl border border-gray-100 shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
+                  >
+                    {depAirports.map((a, i) => (
+                      <button
+                        key={`${a.code}-${i}`}
+                        type="button"
+                        onClick={() => { setDepartureCity(`${a.city} (${a.code})`); setDepShow(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-sand-50 transition-colors text-left text-sm"
+                      >
+                        <Plane className="h-4 w-4 text-primary-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-gray-900">{a.emoji} {a.city}</span>
+                          <span className="text-gray-400 ml-1">— {a.airportName}</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded">{a.code}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -247,7 +314,7 @@ export default function ProposePage() {
                     Ta destination
                   </h2>
                   {result.proposals.map((p) => (
-                    <ProposalCard key={`pri-${p.destination}`} proposal={p} primary />
+                    <ProposalCard key={`pri-${p.destination}`} proposal={p} primary simulationUrl={buildSimulationUrl(p.destination)} />
                   ))}
                 </div>
               )}
@@ -260,7 +327,7 @@ export default function ProposePage() {
                   </h2>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {result.proposals.map((p) => (
-                      <ProposalCard key={p.destination} proposal={p} />
+                      <ProposalCard key={p.destination} proposal={p} simulationUrl={buildSimulationUrl(p.destination)} />
                     ))}
                   </div>
                 </div>
@@ -274,7 +341,7 @@ export default function ProposePage() {
                   </h2>
                   <div className="grid md:grid-cols-2 gap-4">
                     {result.alternatives.map((p) => (
-                      <ProposalCard key={`alt-${p.destination}`} proposal={p} />
+                      <ProposalCard key={`alt-${p.destination}`} proposal={p} simulationUrl={buildSimulationUrl(p.destination)} />
                     ))}
                   </div>
                 </div>
@@ -287,7 +354,7 @@ export default function ProposePage() {
   );
 }
 
-function ProposalCard({ proposal, primary = false }: { proposal: TripProposal; primary?: boolean }) {
+function ProposalCard({ proposal, primary = false, simulationUrl }: { proposal: TripProposal; primary?: boolean; simulationUrl: string }) {
   const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
 
@@ -296,7 +363,7 @@ function ProposalCard({ proposal, primary = false }: { proposal: TripProposal; p
   }, [proposal.destination]);
 
   const handleSimulate = () => {
-    router.push(`/simulation?destination=${encodeURIComponent(proposal.destination)}`);
+    router.push(simulationUrl);
   };
 
   return (

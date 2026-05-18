@@ -47,6 +47,10 @@ interface SimulationFormProps {
   }) => Promise<void>;
   isLoading: boolean;
   initialDestination?: string;
+  initialDeparture?: string;
+  initialStartDate?: string;
+  initialEndDate?: string;
+  initialPeople?: string;
 }
 
 function useAutocomplete<T>(searchFn: (q: string) => Promise<T[]>, delay = 200) {
@@ -93,16 +97,19 @@ const INTERESTS = [
   { id: 'history', label: 'Histoire', icon: '📜' },
 ];
 
-export default function SimulationForm({ onSubmit, isLoading, initialDestination }: SimulationFormProps) {
+export default function SimulationForm({
+  onSubmit, isLoading,
+  initialDestination, initialDeparture, initialStartDate, initialEndDate, initialPeople,
+}: SimulationFormProps) {
   const { user } = useAuth();
   const router = useRouter();
   const isPremium = user?.isPremium ?? false;
 
   const [destination, setDestination] = useState(initialDestination ?? '');
-  const [departureCity, setDepartureCity] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [people, setPeople] = useState('2');
+  const [departureCity, setDepartureCity] = useState(initialDeparture ?? '');
+  const [startDate, setStartDate] = useState(initialStartDate ?? '');
+  const [endDate, setEndDate] = useState(initialEndDate ?? '');
+  const [people, setPeople] = useState(initialPeople ?? '2');
   const [stops, setStops] = useState<string[]>([]);
   const [hostStay, setHostStay] = useState(false);
   const [searchRadiusKm, setSearchRadiusKm] = useState(50);
