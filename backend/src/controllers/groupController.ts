@@ -58,7 +58,7 @@ export const listGroups = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-/** Get a group's details (members + count) if the user is a member. */
+/** Get a group's details (members + count + linked simulations + votes) if the user is a member. */
 export const getGroup = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -72,12 +72,168 @@ export const getGroup = async (req: AuthRequest, res: Response): Promise<void> =
 
     const group = await prisma.tripGroup.findUnique({
       where: { id },
-      include: { members: { include: { user: { select: { id: true, email: true } } } } },
+      include: {
+        members: { include: { user: { select: { id: true, email: true } } } },
+        simulations: {
+          include: {
+            simulation: {
+              select: {
+                id: true, destination: true, departureCity: true,
+                startDate: true, endDate: true, duration: true,
+                people: true, budget: true, createdAt: true,
+              },
+            },
+            proposer: { select: { id: true, email: true } },
+            votes: { include: { user: { select: { id: true, email: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     });
 
     res.json({ group: { ...group, myRole: member.role } });
   } catch (error) {
     console.error('GetGroup error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Kick a member from a group (owner only, cannot kick self). */
+export const kickGroupMember = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id, userId } = req.params;
+    if (userId === req.userId) {
+      res.status(400).json({ error: 'Utilise quitter le groupe pour te retirer toi-même' });
+      return;
+    }
+    const ownerMember = await prisma.tripGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: req.userId! } },
+    });
+    if (!ownerMember || ownerMember.role !== 'owner') {
+      res.status(403).json({ error: 'Seul le propriétaire peut retirer un membre' });
+      return;
+    }
+    await prisma.tripGroupMember.delete({
+      where: { groupId_userId: { groupId: id, userId } },
+    }).catch(() => {});
+    res.json({ success: true });
+  } catch (error) {
+    console.error('KickGroupMember error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Attach a simulation to a group as a proposal (any member). */
+export const proposeGroupSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { simulationId } = req.body as { simulationId?: string };
+    if (!simulationId) {
+      res.status(400).json({ error: 'simulationId requis' });
+      return;
+    }
+
+    const member = await prisma.tripGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: req.userId! } },
+    });
+    if (!member) {
+      res.status(404).json({ error: 'Groupe non trouvé' });
+      return;
+    }
+
+    const sim = await prisma.simulation.findUnique({ where: { id: simulationId } });
+    if (!sim || sim.userId !== req.userId) {
+      res.status(404).json({ error: 'Simulation non trouvée' });
+      return;
+    }
+
+    const proposal = await prisma.groupSimulation.upsert({
+      where: { groupId_simulationId: { groupId: id, simulationId } },
+      update: {},
+      create: { groupId: id, simulationId, proposedBy: req.userId! },
+      include: {
+        simulation: true,
+        proposer: { select: { id: true, email: true } },
+        votes: { include: { user: { select: { id: true, email: true } } } },
+      },
+    });
+    res.json({ proposal });
+  } catch (error) {
+    console.error('ProposeGroupSimulation error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Remove a simulation proposal from a group (proposer or owner). */
+export const removeGroupSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id, proposalId } = req.params;
+    const proposal = await prisma.groupSimulation.findUnique({
+      where: { id: proposalId },
+      include: { group: true },
+    });
+    if (!proposal || proposal.groupId !== id) {
+      res.status(404).json({ error: 'Proposition non trouvée' });
+      return;
+    }
+    if (proposal.proposedBy !== req.userId && proposal.group.ownerId !== req.userId) {
+      res.status(403).json({ error: 'Action non autorisée' });
+      return;
+    }
+    await prisma.groupSimulation.delete({ where: { id: proposalId } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('RemoveGroupSimulation error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Vote up/down on a group simulation proposal (members only). */
+export const voteOnGroupSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id, proposalId } = req.params;
+    const { vote } = req.body as { vote?: 'up' | 'down' };
+    if (vote !== 'up' && vote !== 'down') {
+      res.status(400).json({ error: 'vote doit être "up" ou "down"' });
+      return;
+    }
+
+    const member = await prisma.tripGroupMember.findUnique({
+      where: { groupId_userId: { groupId: id, userId: req.userId! } },
+    });
+    if (!member) {
+      res.status(404).json({ error: 'Groupe non trouvé' });
+      return;
+    }
+
+    const proposal = await prisma.groupSimulation.findUnique({ where: { id: proposalId } });
+    if (!proposal || proposal.groupId !== id) {
+      res.status(404).json({ error: 'Proposition non trouvée' });
+      return;
+    }
+
+    const saved = await prisma.groupVote.upsert({
+      where: { groupSimulationId_userId: { groupSimulationId: proposalId, userId: req.userId! } },
+      update: { vote },
+      create: { groupSimulationId: proposalId, userId: req.userId!, vote },
+    });
+    res.json({ vote: saved });
+  } catch (error) {
+    console.error('VoteOnGroupSimulation error:', error);
+    res.status(500).json({ error: 'Erreur' });
+  }
+};
+
+/** Remove the current user's vote on a proposal. */
+export const removeVoteOnGroupSimulation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { proposalId } = req.params;
+    await prisma.groupVote.delete({
+      where: { groupSimulationId_userId: { groupSimulationId: proposalId, userId: req.userId! } },
+    }).catch(() => {});
+    res.json({ success: true });
+  } catch (error) {
+    console.error('RemoveVote error:', error);
     res.status(500).json({ error: 'Erreur' });
   }
 };

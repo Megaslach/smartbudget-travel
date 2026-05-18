@@ -223,6 +223,59 @@ export interface TripGroup {
   createdAt: string;
   updatedAt: string;
   members?: TripGroupMember[];
+  simulations?: GroupSimulationProposal[];
+}
+
+export interface GroupVote {
+  id: string;
+  groupSimulationId: string;
+  userId: string;
+  vote: 'up' | 'down';
+  createdAt: string;
+  user: { id: string; email: string };
+}
+
+export interface GroupSimulationProposal {
+  id: string;
+  groupId: string;
+  simulationId: string;
+  proposedBy: string;
+  createdAt: string;
+  simulation: {
+    id: string;
+    destination: string;
+    departureCity: string;
+    startDate: string;
+    endDate: string;
+    duration: number;
+    people: number;
+    budget: number;
+    createdAt: string;
+  };
+  proposer: { id: string; email: string };
+  votes: GroupVote[];
+}
+
+export interface TripProposal {
+  destination: string;
+  country: string;
+  countryCode: string;
+  emoji: string;
+  durationDays: number;
+  people: number;
+  estimatedTotal: number;
+  perPerson: number;
+  fitsBudget: boolean;
+  breakdown: {
+    flights: number;
+    accommodation: number;
+    food: number;
+    activities: number;
+    transport: number;
+  };
+  reason?: string;
+  bestMonths?: string[];
+  imageQuery?: string;
 }
 
 export interface Simulation {

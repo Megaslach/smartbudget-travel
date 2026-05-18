@@ -1,7 +1,7 @@
 import {
   AuthResponse, SimulationResponse, TripResponse, Simulation, PriceCheckResponse,
   CompareResponse, CollaboratorsResponse, Comment, InviteInfo, PriceAlertConfig, PricePoint,
-  FlexibleDatesScanResponse, PremiumFilters, TripGroup,
+  FlexibleDatesScanResponse, PremiumFilters, TripGroup, TripProposal,
 } from '../types';
 
 export interface ApiClientConfig {
@@ -147,6 +147,46 @@ export class ApiClient {
   }
   leaveGroup(id: string): Promise<{ success: boolean }> {
     return this.request(`/groups/${id}`, { method: 'DELETE' });
+  }
+  kickGroupMember(id: string, userId: string): Promise<{ success: boolean }> {
+    return this.request(`/groups/${id}/members/${userId}`, { method: 'DELETE' });
+  }
+  proposeGroupSimulation(id: string, simulationId: string): Promise<{ proposal: any }> {
+    return this.request(`/groups/${id}/proposals`, {
+      method: 'POST',
+      body: JSON.stringify({ simulationId }),
+    });
+  }
+  removeGroupSimulation(id: string, proposalId: string): Promise<{ success: boolean }> {
+    return this.request(`/groups/${id}/proposals/${proposalId}`, { method: 'DELETE' });
+  }
+  voteOnGroupSimulation(id: string, proposalId: string, vote: 'up' | 'down'): Promise<{ vote: any }> {
+    return this.request(`/groups/${id}/proposals/${proposalId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ vote }),
+    });
+  }
+  removeVoteOnGroupSimulation(id: string, proposalId: string): Promise<{ success: boolean }> {
+    return this.request(`/groups/${id}/proposals/${proposalId}/vote`, { method: 'DELETE' });
+  }
+
+  // Trip proposals (budget-first discovery)
+  proposeTrips(data: {
+    budgetTotal?: number;
+    budgetPerPerson?: number;
+    people: number;
+    destination?: string;
+    departureCity?: string;
+    startDate?: string;
+    endDate?: string;
+    durationDays?: number;
+  }): Promise<{
+    proposals: TripProposal[];
+    feasibility?: 'ok' | 'tight' | 'impossible';
+    advice?: string;
+    alternatives?: TripProposal[];
+  }> {
+    return this.request('/propose-trips', { method: 'POST', body: JSON.stringify(data) });
   }
 
   getNearestAirport(lat: number, lng: number): Promise<{

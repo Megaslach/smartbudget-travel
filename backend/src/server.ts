@@ -8,6 +8,7 @@ import tripRoutes from './routes/tripRoutes';
 import stripeRoutes from './routes/stripeRoutes';
 import destinationRoutes from './routes/destinationRoutes';
 import groupRoutes from './routes/groupRoutes';
+import { proposeTripsController } from './controllers/tripProposalController';
 import { handleWebhook } from './controllers/stripeController';
 import { startPriceAlertCron } from './services/priceAlertJob';
 
@@ -21,6 +22,7 @@ const allowedOrigins = [
   env.CLIENT_URL,
   'http://localhost:3000',
   'https://smartbudget-travel.netlify.app',
+  'https://itinifly-mobile.netlify.app',
 ].filter(Boolean);
 app.use(
   cors({
@@ -30,6 +32,7 @@ app.use(
       // Allow any localhost port (Expo web, dev servers)
       if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
       if (/^https:\/\/[a-z0-9-]+--smartbudget-travel\.netlify\.app$/.test(origin)) return cb(null, true);
+      if (/^https:\/\/[a-z0-9-]+--itinifly-mobile\.netlify\.app$/.test(origin)) return cb(null, true);
       if (/^https:\/\/.*\.railway\.app$/.test(origin)) return cb(null, true);
       if (/^https:\/\/.*\.up\.railway\.app$/.test(origin)) return cb(null, true);
       return cb(null, false);
@@ -46,6 +49,7 @@ app.use('/api', tripRoutes);
 app.use('/api', stripeRoutes);
 app.use('/api', destinationRoutes);
 app.use('/api', groupRoutes);
+app.post('/api/propose-trips', proposeTripsController as any);
 
 // Health check
 app.get('/api/health', (_req, res) => {

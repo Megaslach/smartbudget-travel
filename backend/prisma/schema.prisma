@@ -24,18 +24,48 @@ model User {
   invitesCreated SimulationInvite[]       @relation("InviteCreator")
   ownedGroups    TripGroup[]              @relation("GroupOwner")
   groupMembers   TripGroupMember[]
+  groupSimulations  GroupSimulation[]
+  groupVotes        GroupVote[]
 }
 
 model TripGroup {
-  id          String            @id @default(uuid())
-  name        String
-  emoji       String            @default("🌍")
-  ownerId     String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  owner       User              @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members     TripGroupMember[]
-  invites     TripGroupInvite[]
+  id           String              @id @default(uuid())
+  name         String
+  emoji        String              @default("🌍")
+  ownerId      String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  owner        User                @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      TripGroupMember[]
+  invites      TripGroupInvite[]
+  simulations  GroupSimulation[]
+}
+
+model GroupSimulation {
+  id           String     @id @default(uuid())
+  groupId      String
+  simulationId String
+  proposedBy   String
+  createdAt    DateTime   @default(now())
+  group        TripGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  simulation   Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  proposer     User       @relation(fields: [proposedBy], references: [id], onDelete: Cascade)
+  votes        GroupVote[]
+
+  @@unique([groupId, simulationId])
+}
+
+model GroupVote {
+  id                String          @id @default(uuid())
+  groupSimulationId String
+  userId            String
+  vote              String          // 'up' | 'down'
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  groupSimulation   GroupSimulation @relation(fields: [groupSimulationId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupSimulationId, userId])
 }
 
 model TripGroupMember {
@@ -90,6 +120,7 @@ model Simulation {
   collaborators        SimulationCollaborator[]
   invites              SimulationInvite[]
   comments             SimulationComment[]
+  groupProposals       GroupSimulation[]
 }
 
 model PriceSnapshot {

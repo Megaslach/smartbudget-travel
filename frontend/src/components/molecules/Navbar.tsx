@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/atoms/Button';
 import Badge from '@/components/atoms/Badge';
-import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle, Scale, Menu, X, Users, Sparkles } from 'lucide-react';
+import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle, Scale, Menu, X, Users, Sparkles, Wallet } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -46,6 +46,12 @@ export default function Navbar() {
                   <Button variant="ghost" size="sm">
                     <UserCircle className="h-4 w-4" />
                     Profil
+                  </Button>
+                </Link>
+                <Link href="/propose">
+                  <Button variant="ghost" size="sm">
+                    <Wallet className="h-4 w-4" />
+                    Trouver
                   </Button>
                 </Link>
                 <Link href="/inspiration">
@@ -125,6 +131,9 @@ export default function Navbar() {
                   </Link>
                   <Link href="/profile" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
                     <UserCircle className="h-5 w-5" /> Profil
+                  </Link>
+                  <Link href="/propose" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
+                    <Wallet className="h-5 w-5" /> Trouver un voyage
                   </Link>
                   <Link href="/inspiration" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
                     <Sparkles className="h-5 w-5" /> Inspiration
