@@ -212,11 +212,25 @@ export default function BudgetResultCard({ budget, destination, duration, people
               {budget.flights.options.map((f, i) => {
                 const depTime = f.departureAt ? new Date(f.departureAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
                 const arrTime = f.arrivalAt ? new Date(f.arrivalAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+                const badge = ({
+                  cheapest: { label: 'Moins cher', cls: 'bg-emerald-500 text-white' },
+                  fastest:  { label: 'Plus rapide', cls: 'bg-violet-500 text-white' },
+                  best:     { label: 'Meilleur choix', cls: 'bg-amber-500 text-white' },
+                  direct:   { label: 'Direct', cls: 'bg-sky-500 text-white' },
+                  standard: null,
+                } as Record<string, { label: string; cls: string } | null>)[f.category || 'standard'];
                 return (
-                  <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-sky-50/50 to-white rounded-xl border border-sky-100 p-3 sm:p-4 hover:border-sky-300 hover:shadow-lg hover:shadow-sky-500/10 transition-all group">
+                  <a key={i} href={f.bookingUrl} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-sky-50/50 to-white rounded-xl border p-3 sm:p-4 hover:shadow-lg hover:shadow-sky-500/10 transition-all group ${
+                    f.category === 'best' ? 'border-amber-300 ring-2 ring-amber-100' : 'border-sky-100 hover:border-sky-300'
+                  }`}>
                     <div className="p-2 rounded-lg bg-sky-100 group-hover:bg-sky-200 transition-colors shrink-0"><Plane className="h-5 w-5 text-sky-600" /></div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm truncate">{f.airline}</p>
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{f.airline}</p>
+                        {badge && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
                         <span>{f.type}</span>
                         {depTime && arrTime && (

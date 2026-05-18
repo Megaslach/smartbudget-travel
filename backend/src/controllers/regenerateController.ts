@@ -183,19 +183,20 @@ Varie les gammes et les quartiers. Pas de doublons.`;
       });
 
       if (real.flights && real.flights.length > 0) {
-        const avgPrice = Math.round(real.flights.reduce((s, f: any) => s + (f.price || 0), 0) / real.flights.length);
+        const sorted = [...real.flights].sort((a: any, b: any) => a.price - b.price);
+        const avgPrice = Math.round(sorted[0].price); // Use the cheapest as headline price
         const totalCost = avgPrice * sim.people;
-        const offers = real.flights.slice(0, 6).map((f: any) => ({
-          airline: f.airline,
-          airlineName: f.airlineName || f.airline,
+        const options = sorted.slice(0, 12).map((f: any) => ({
+          airline: f.airlineName || f.airline,
           price: Math.round(f.price),
-          duration: f.duration,
-          stops: f.stops || 0,
+          type: f.stops === 0 ? 'Vol direct' : `${f.stops} escale${f.stops > 1 ? 's' : ''}`,
+          bookingUrl: f.bookingUrl,
           departureAt: f.departureAt,
           arrivalAt: f.arrivalAt,
-          returnDepartureAt: f.returnDepartureAt,
-          returnArrivalAt: f.returnArrivalAt,
-          bookingUrl: f.bookingUrl,
+          duration: f.duration,
+          stops: f.stops,
+          category: f.category,
+          isRealData: true,
         }));
         budget.flights = {
           ...budget.flights,
@@ -203,7 +204,8 @@ Varie les gammes et les quartiers. Pas de doublons.`;
           total: totalCost,
           isRealData: true,
           source: `${real.source} — Prix réels`,
-          offers,
+          options,
+          note: `${sorted.length} vols réels trouvés. Prix par personne A/R.`,
         };
       } else {
         res.status(503).json({ error: 'Aucun vol réel trouvé — réessaie dans quelques minutes' });

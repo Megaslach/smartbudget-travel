@@ -224,7 +224,12 @@ export async function searchFlightsCascade(input: SimulationInput): Promise<{
 }> {
   const { departureCity, destination, startDate, endDate, people } = input;
   const pf = input.premiumFilters;
-  const params = { departureCity, destination, startDate, endDate, people, flightClass: pf?.flightClass };
+  const params = {
+    departureCity, destination, startDate, endDate, people,
+    flightClass: pf?.flightClass,
+    directFlightOnly: pf?.directFlightOnly,
+    flightTimePreference: pf?.flightTimePreference,
+  };
 
   const providers: Array<{ fn: () => Promise<any>; name: 'serpapi' | 'amadeus' | 'kiwi' | 'skyscanner' }> = [
     { fn: () => searchSerpApiFlights(params), name: 'serpapi' },
@@ -315,7 +320,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
       note: `${realFlights.length} vols trouvés pour ${startDate}. Prix par personne A/R.`,
       searchUrl: withAffiliate((flightSource === 'kiwi' || flightSource === 'serpapi') ? (realFlights[0].bookingUrl || urls.skyscanner) : urls.skyscanner),
       isRealData: true,
-      options: realFlights.slice(0, 5).map((f) => ({
+      options: realFlights.slice(0, 12).map((f) => ({
         airline: `${f.airlineName}`,
         price: Math.round(f.price),
         type: f.stops === 0 ? 'Vol direct' : `${f.stops} escale${f.stops > 1 ? 's' : ''}`,
@@ -324,6 +329,7 @@ export async function estimateBudget(input: SimulationInput): Promise<BudgetEsti
         arrivalAt: f.arrivalAt,
         duration: f.duration,
         stops: f.stops,
+        category: (f as any).category as undefined | 'cheapest' | 'fastest' | 'best' | 'direct' | 'standard',
         isRealData: true,
       })),
     };

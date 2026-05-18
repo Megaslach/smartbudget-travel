@@ -7,6 +7,8 @@ export interface User {
   createdAt?: string;
 }
 
+export type FlightCategory = 'cheapest' | 'fastest' | 'best' | 'direct' | 'standard';
+
 export interface FlightOption {
   airline: string;
   price: number;
@@ -16,6 +18,7 @@ export interface FlightOption {
   arrivalAt?: string;
   duration?: string;
   stops?: number;
+  category?: FlightCategory;
   isRealData?: boolean;
 }
 
