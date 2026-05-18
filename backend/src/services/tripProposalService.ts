@@ -294,7 +294,7 @@ export function proposeTrips(input: ProposeTripsInput): {
       const scoreB = targetB < 0.4 ? targetB + 1 : Math.abs(targetB - 0.75);
       return scoreA - scoreB;
     })
-    .slice(0, 8);
+    .slice(0, 24);
 
   if (all.length === 0) {
     // Budget too low — show the cheapest 3 anyway with a note

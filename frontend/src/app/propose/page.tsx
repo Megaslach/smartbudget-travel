@@ -231,6 +231,15 @@ export default function ProposePage() {
                 </div>
               )}
 
+              {/* Estimate disclaimer */}
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-sand-50 border border-gray-200">
+                <Lightbulb className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  <span className="font-semibold">Estimations indicatives</span> basées sur des coûts moyens réels (vols, hôtels, repas, activités).
+                  Clique <span className="font-semibold">« Simuler ce voyage »</span> pour les <span className="font-semibold">vrais prix en direct</span> (SerpAPI, Amadeus, Kiwi pour les vols ; Booking, Hotellook pour les hôtels ; GetYourGuide pour les activités).
+                </p>
+              </div>
+
               {/* Specific destination proposal */}
               {result.proposals.length > 0 && destination && (
                 <div>
@@ -249,7 +258,7 @@ export default function ProposePage() {
                   <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
                     {result.proposals.length} destinations qui rentrent dans ton budget
                   </h2>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {result.proposals.map((p) => (
                       <ProposalCard key={p.destination} proposal={p} />
                     ))}
