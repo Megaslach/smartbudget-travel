@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { searchCities, Airport } from '../data/airports';
 import { searchWorldwideCities, findNearestAirport, estimateAirportTransport } from '../services/geoService';
-import { createImageFetcher } from '@smartbudget/shared';
+import { createImageFetcher } from '../utils/imageFetcher';
 import { env } from '../config/env';
 
 const imageFetcher = createImageFetcher({
