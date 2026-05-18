@@ -254,13 +254,25 @@ export function proposeTrips(input: ProposeTripsInput): {
     }
     advice.push('Voici des destinations proches en style mais moins chères :');
 
-    // Find cheaper destinations with overlapping tags
-    const alternatives = DESTINATIONS
+    // Find cheaper destinations: first try same-style, then fall back to any.
+    const sameStyle = DESTINATIONS
       .filter((alt) => alt.name !== d.name && alt.tags.some((t) => d.tags.includes(t)))
       .map((alt) => toProposal(alt, durationDays, people, budgetTotal))
       .filter((p) => p.fitsBudget)
-      .sort((a, b) => a.estimatedTotal - b.estimatedTotal)
+      .sort((a, b) => b.estimatedTotal - a.estimatedTotal)
       .slice(0, 5);
+
+    let alternatives = sameStyle;
+    if (alternatives.length === 0) {
+      // Budget too tight even for same-style alternatives — show the 3 cheapest
+      // overall, with a note in the advice that this is the floor we can offer.
+      alternatives = DESTINATIONS
+        .filter((alt) => alt.name !== d.name)
+        .map((alt) => toProposal(alt, durationDays, people, budgetTotal))
+        .sort((a, b) => a.estimatedTotal - b.estimatedTotal)
+        .slice(0, 3);
+      advice.push('(Aucune destination ne rentre dans ce budget pour cette durée. Voici les 3 moins chères, qui le dépassent quand même.)');
+    }
 
     return {
       proposals: [proposal],
