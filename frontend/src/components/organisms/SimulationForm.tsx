@@ -11,6 +11,15 @@ import { PremiumFilters } from '@/types';
 import { useRouter } from 'next/navigation';
 
 interface Airport { code: string; name: string }
+interface NearestAirportInfo {
+  airport: Airport;
+  cityName: string;
+  country: string;
+  distanceKm: number;
+  transport?: {
+    options: { mode: string; icon: string; minPrice: number; maxPrice: number; minMinutes: number; maxMinutes: number; note: string }[];
+  };
+}
 interface Destination {
   name: string;
   country: string;
@@ -20,6 +29,7 @@ interface Destination {
   imageQuery: string;
   matchType: string;
   popular: boolean;
+  nearestAirportInfo?: NearestAirportInfo | null;
 }
 interface AirportResult { city: string; country: string; emoji: string; code: string; airportName: string }
 
@@ -192,20 +202,41 @@ export default function SimulationForm({ onSubmit, isLoading, initialDestination
     <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 p-8 space-y-6">
 
       {selectedDest && (
-        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="relative rounded-2xl overflow-hidden h-40 bg-gradient-to-r from-primary-600 to-primary-400">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white">
-              <span className="text-4xl block mb-2">{selectedDest.emoji}</span>
-              <span className="text-2xl font-bold font-display">{selectedDest.name}</span>
-              <p className="text-white/70 text-sm mt-1">{selectedDest.country}</p>
-              {selectedDest.airports.length > 0 && (
-                <div className="flex gap-2 mt-2 justify-center flex-wrap">
-                  {selectedDest.airports.map(a => (
-                    <span key={a.code} className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{a.code} — {a.name}</span>
-                  ))}
-                </div>
-              )}
-            </div>
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary-600 to-primary-400 p-6">
+          <div className="text-center text-white">
+            <span className="text-4xl block mb-2">{selectedDest.emoji}</span>
+            <span className="text-2xl font-bold font-display">{selectedDest.name}</span>
+            <p className="text-white/70 text-sm mt-1">{selectedDest.country}</p>
+            {selectedDest.airports.length > 0 && (
+              <div className="flex gap-2 mt-3 justify-center flex-wrap">
+                {selectedDest.airports.map(a => (
+                  <span key={a.code} className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{a.code} — {a.name}</span>
+                ))}
+              </div>
+            )}
+            {selectedDest.airports.length === 0 && selectedDest.nearestAirportInfo && (
+              <div className="mt-3 inline-block text-left bg-white/15 backdrop-blur-sm rounded-xl px-4 py-3 max-w-md mx-auto">
+                <p className="text-xs uppercase tracking-wider opacity-70 mb-1">Aéroport le plus proche</p>
+                <p className="font-bold text-sm">
+                  ✈️ {selectedDest.nearestAirportInfo.airport.code} — {selectedDest.nearestAirportInfo.airport.name}
+                </p>
+                <p className="text-xs opacity-80 mt-0.5">
+                  À ~{Math.round(selectedDest.nearestAirportInfo.distanceKm)} km de {selectedDest.name}
+                </p>
+                {selectedDest.nearestAirportInfo.transport && selectedDest.nearestAirportInfo.transport.options.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-white/20">
+                    <p className="text-[10px] uppercase tracking-wider opacity-70 mb-1">Transport jusqu&apos;à {selectedDest.name}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedDest.nearestAirportInfo.transport.options.slice(0, 3).map((t, i) => (
+                        <span key={i} className="text-[11px] bg-white/20 px-2 py-0.5 rounded-full">
+                          {t.icon} {t.mode} · {t.minPrice === 0 ? 'gratuit' : `${t.minPrice}-${t.maxPrice}€`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
       )}
@@ -271,11 +302,22 @@ export default function SimulationForm({ onSubmit, isLoading, initialDestination
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 text-sm">{d.name}</p>
                       <p className="text-xs text-gray-400">{d.country}</p>
+                      {d.airports.length === 0 && d.nearestAirportInfo && (
+                        <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                          ✈️ {d.nearestAirportInfo.airport.code} à {Math.round(d.nearestAirportInfo.distanceKm)}km
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-1 flex-wrap justify-end">
-                      {d.airports.slice(0, 2).map(a => (
-                        <span key={a.code} className="text-[10px] font-mono font-bold text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded">{a.code}</span>
-                      ))}
+                      {d.airports.length > 0 ? (
+                        d.airports.slice(0, 2).map(a => (
+                          <span key={a.code} className="text-[10px] font-mono font-bold text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded">{a.code}</span>
+                        ))
+                      ) : d.nearestAirportInfo ? (
+                        <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          {d.nearestAirportInfo.airport.code}
+                        </span>
+                      ) : null}
                     </div>
                   </button>
                 ))}
