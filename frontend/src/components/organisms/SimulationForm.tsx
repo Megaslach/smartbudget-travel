@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, PlaneTakeoff, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown, Clock, Car, Baby, Accessibility, Heart, Zap, Leaf } from 'lucide-react';
+import { MapPin, PlaneTakeoff, Users, Search, Plane, Lock, Crown, Building2, UtensilsCrossed, Compass, Wallet, ChevronDown, Clock, Car, Baby, Accessibility, Heart, Zap, Leaf, Plus, X, Home, Radius } from 'lucide-react';
 import Button from '@/components/atoms/Button';
 import DateRangePicker from '@/components/molecules/DateRangePicker';
 import { api } from '@/lib/api';
@@ -24,8 +24,19 @@ interface Destination {
 interface AirportResult { city: string; country: string; emoji: string; code: string; airportName: string }
 
 interface SimulationFormProps {
-  onSubmit: (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number; premiumFilters?: PremiumFilters }) => Promise<void>;
+  onSubmit: (data: {
+    destination: string;
+    departureCity: string;
+    startDate: string;
+    endDate: string;
+    people: number;
+    stops?: { name: string }[];
+    hostStay?: boolean;
+    searchRadiusKm?: number;
+    premiumFilters?: PremiumFilters;
+  }) => Promise<void>;
   isLoading: boolean;
+  initialDestination?: string;
 }
 
 function useAutocomplete<T>(searchFn: (q: string) => Promise<T[]>, delay = 200) {
@@ -72,19 +83,23 @@ const INTERESTS = [
   { id: 'history', label: 'Histoire', icon: '📜' },
 ];
 
-export default function SimulationForm({ onSubmit, isLoading }: SimulationFormProps) {
+export default function SimulationForm({ onSubmit, isLoading, initialDestination }: SimulationFormProps) {
   const { user } = useAuth();
   const router = useRouter();
   const isPremium = user?.isPremium ?? false;
 
-  const [destination, setDestination] = useState('');
+  const [destination, setDestination] = useState(initialDestination ?? '');
   const [departureCity, setDepartureCity] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [people, setPeople] = useState('2');
+  const [stops, setStops] = useState<string[]>([]);
+  const [hostStay, setHostStay] = useState(false);
+  const [searchRadiusKm, setSearchRadiusKm] = useState(50);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedDest, setSelectedDest] = useState<Destination | null>(null);
   const [showPremiumFilters, setShowPremiumFilters] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Premium filters
   const [accommodationArea, setAccommodationArea] = useState('');
@@ -154,8 +169,24 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
       ...(hasAccessibilityNeeds ? { hasAccessibilityNeeds } : {}),
     } : undefined;
 
-    await onSubmit({ destination: destination.trim(), departureCity: departureCity.trim(), startDate, endDate, people: parseInt(people), premiumFilters });
+    const cleanStops = stops.map(s => s.trim()).filter(s => s.length >= 2).map(name => ({ name }));
+
+    await onSubmit({
+      destination: destination.trim(),
+      departureCity: departureCity.trim(),
+      startDate,
+      endDate,
+      people: parseInt(people),
+      stops: cleanStops.length > 0 ? cleanStops : undefined,
+      hostStay: hostStay || undefined,
+      searchRadiusKm,
+      premiumFilters,
+    });
   };
+
+  const addStop = () => { if (stops.length < 5) setStops([...stops, '']); };
+  const updateStop = (i: number, v: string) => setStops(stops.map((s, idx) => idx === i ? v : s));
+  const removeStop = (i: number) => setStops(stops.filter((_, idx) => idx !== i));
 
   return (
     <motion.form onSubmit={handleSubmit} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 p-8 space-y-6">
@@ -268,6 +299,120 @@ export default function SimulationForm({ onSubmit, isLoading }: SimulationFormPr
             className={`w-full px-4 py-3 rounded-xl border ${errors.people ? 'border-red-400' : 'border-gray-200'} focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50`} />
           {errors.people && <p className="text-red-500 text-xs mt-1">{errors.people}</p>}
         </div>
+      </div>
+
+      {/* Advanced (free) options: stops, host stay, search radius */}
+      <div className="border-t border-gray-100 pt-4">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-sand-50 border border-gray-200 hover:border-gray-300 transition-all"
+        >
+          <div className="flex items-center gap-2">
+            <Compass className="h-5 w-5 text-gray-500" />
+            <span className="font-semibold text-sm text-gray-700">Options avancées</span>
+            {(stops.length > 0 || hostStay || searchRadiusKm !== 50) && (
+              <span className="text-[10px] bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-semibold">
+                {[stops.length > 0 && `${stops.length} étape${stops.length > 1 ? 's' : ''}`, hostStay && 'hébergé', searchRadiusKm !== 50 && `${searchRadiusKm}km`].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </div>
+          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+        </button>
+
+        <AnimatePresence>
+          {showAdvanced && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-4 space-y-5">
+                {/* Stops / multi-city */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <MapPin className="inline h-4 w-4 mr-1 text-gray-400" />Étapes & escales (optionnel)
+                    {stops.length > 0 && <span className="ml-2 text-xs text-gray-400">{stops.length}/5</span>}
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">Villes à visiter en plus de la destination principale — idéal pour les road trips.</p>
+                  <div className="space-y-2">
+                    {stops.map((stop, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Étape ${i + 1}`}
+                          value={stop}
+                          onChange={(e) => updateStop(i, e.target.value)}
+                          className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all bg-sand-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStop(i)}
+                          className="px-3 rounded-xl border border-red-200 text-red-400 hover:bg-red-50 transition-colors"
+                          aria-label="Supprimer l'étape"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {stops.length < 5 && (
+                      <button
+                        type="button"
+                        onClick={addStop}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-primary-300 text-primary-600 hover:bg-primary-50 transition-colors text-sm font-semibold"
+                      >
+                        <Plus className="h-4 w-4" />Ajouter une étape
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Search radius */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    <Radius className="inline h-4 w-4 mr-1 text-gray-400" />Rayon de recherche
+                    <span className="ml-2 text-xs text-primary-600 font-bold">{searchRadiusKm} km</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">Activités et hôtels dans ce rayon autour de {destination || 'la destination'}.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[10, 25, 50, 100, 150, 200].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setSearchRadiusKm(r)}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                          searchRadiusKm === r
+                            ? 'bg-primary-500 text-white shadow-md shadow-primary-200'
+                            : 'bg-sand-50 text-gray-600 border border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {r} km
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Host stay */}
+                <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
+                  hostStay ? 'border-primary-400 bg-primary-50' : 'border-gray-200 bg-sand-50 hover:border-gray-300'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={hostStay}
+                    onChange={(e) => setHostStay(e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary-500"
+                  />
+                  <Home className={`h-5 w-5 ${hostStay ? 'text-primary-500' : 'text-gray-400'}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">Loger chez quelqu&apos;un</p>
+                    <p className="text-[11px] text-gray-500">Famille, amis ou communauté — l&apos;hébergement est gratuit, on l&apos;enlève du budget.</p>
+                  </div>
+                </label>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Premium Filters Section */}

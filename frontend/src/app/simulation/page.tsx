@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import SimulationForm from '@/components/organisms/SimulationForm';
 import ResultsSection from '@/components/organisms/ResultsSection';
 import SimulationLoadingOverlay from '@/components/molecules/SimulationLoadingOverlay';
+import Loader from '@/components/atoms/Loader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { BudgetEstimate, AiTipsResult } from '@/types';
@@ -23,9 +24,11 @@ interface SimulationResult {
   aiTips?: AiTipsResult;
 }
 
-export default function SimulationPage() {
+function SimulationContent() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialDestination = searchParams.get('destination') ?? undefined;
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
@@ -34,7 +37,17 @@ export default function SimulationPage() {
     return null;
   }
 
-  const handleSimulate = async (data: { destination: string; departureCity: string; startDate: string; endDate: string; people: number; premiumFilters?: import('@/types').PremiumFilters }) => {
+  const handleSimulate = async (data: {
+    destination: string;
+    departureCity: string;
+    startDate: string;
+    endDate: string;
+    people: number;
+    stops?: { name: string }[];
+    hostStay?: boolean;
+    searchRadiusKm?: number;
+    premiumFilters?: import('@/types').PremiumFilters;
+  }) => {
     setIsSimulating(true);
     try {
       const response = await api.simulate(data);
@@ -61,7 +74,7 @@ export default function SimulationPage() {
     <DashboardLayout title="Simulation de budget" description="Estimez le coût de votre prochain voyage">
       <SimulationLoadingOverlay open={isSimulating} />
       <div className="max-w-2xl mx-auto space-y-10">
-        <SimulationForm onSubmit={handleSimulate} isLoading={isSimulating} />
+        <SimulationForm onSubmit={handleSimulate} isLoading={isSimulating} initialDestination={initialDestination} />
         {result && (
           <ResultsSection
             simulationId={result.id}
@@ -74,5 +87,13 @@ export default function SimulationPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function SimulationPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader size="lg" text="Chargement..." /></div>}>
+      <SimulationContent />
+    </Suspense>
   );
 }

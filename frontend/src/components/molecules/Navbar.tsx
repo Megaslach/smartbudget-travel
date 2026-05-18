@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/atoms/Button';
 import Badge from '@/components/atoms/Badge';
-import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle, Scale, Menu, X } from 'lucide-react';
+import { Palmtree, LogOut, LayoutDashboard, CreditCard, UserCircle, Scale, Menu, X, Users, Sparkles } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -48,10 +48,22 @@ export default function Navbar() {
                     Profil
                   </Button>
                 </Link>
+                <Link href="/inspiration">
+                  <Button variant="ghost" size="sm">
+                    <Sparkles className="h-4 w-4" />
+                    Inspiration
+                  </Button>
+                </Link>
                 <Link href="/compare">
                   <Button variant="ghost" size="sm">
                     <Scale className="h-4 w-4" />
                     Comparer
+                  </Button>
+                </Link>
+                <Link href="/groups">
+                  <Button variant="ghost" size="sm">
+                    <Users className="h-4 w-4" />
+                    Groupes
                   </Button>
                 </Link>
                 <Link href="/simulation">
@@ -114,8 +126,14 @@ export default function Navbar() {
                   <Link href="/profile" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
                     <UserCircle className="h-5 w-5" /> Profil
                   </Link>
+                  <Link href="/inspiration" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
+                    <Sparkles className="h-5 w-5" /> Inspiration
+                  </Link>
                   <Link href="/compare" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
                     <Scale className="h-5 w-5" /> Comparer
+                  </Link>
+                  <Link href="/groups" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-white/80">
+                    <Users className="h-5 w-5" /> Groupes
                   </Link>
                   <Link href="/simulation" onClick={close} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary-700 text-white hover:bg-primary-800">
                     Simuler un voyage
