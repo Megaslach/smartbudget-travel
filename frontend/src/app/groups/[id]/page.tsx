@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Share2, LogOut, Image as ImageIcon, Copy,
   Plus, ThumbsUp, ThumbsDown, MapPin, Calendar, Users as UsersIcon, UserX, Trash2, X,
-  Crown, NotebookPen, MessageCircle, Save,
+  Crown, NotebookPen, MessageCircle, Save, TrendingDown, TrendingUp, Wallet,
 } from 'lucide-react';
 import DashboardLayout from '@/components/templates/DashboardLayout';
 import Button from '@/components/atoms/Button';
@@ -270,6 +270,47 @@ export default function GroupDetailPage() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
           Propositions de voyage {proposals.length > 0 && `(${proposals.length})`}
         </h2>
+
+        {/* Budget summary — only when 2+ proposals */}
+        {proposals.length >= 2 && (() => {
+          const totals = proposals.map((p) => p.simulation.budget);
+          const avg = Math.round(totals.reduce((a, b) => a + b, 0) / totals.length);
+          const min = Math.round(Math.min(...totals));
+          const max = Math.round(Math.max(...totals));
+          const memberCount = group.members.length;
+          const avgPerMember = Math.round(avg / Math.max(1, memberCount));
+          return (
+            <div className="bg-gradient-to-br from-primary-50 to-amber-50 rounded-2xl border border-primary-200 p-5 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">
+                    <Wallet className="h-3 w-3" />Moyenne
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{avg.toLocaleString()}€</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">
+                    <TrendingDown className="h-3 w-3" />Min
+                  </div>
+                  <p className="text-xl font-bold text-emerald-600">{min.toLocaleString()}€</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">
+                    <TrendingUp className="h-3 w-3" />Max
+                  </div>
+                  <p className="text-xl font-bold text-rose-600">{max.toLocaleString()}€</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1 text-gray-500 text-xs uppercase tracking-wider font-semibold mb-1">
+                    <UsersIcon className="h-3 w-3" />Par membre
+                  </div>
+                  <p className="text-xl font-bold text-primary-700">{avgPerMember.toLocaleString()}€</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">si on partage</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {proposals.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center mb-6">
